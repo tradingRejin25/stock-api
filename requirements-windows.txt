@@ -1,0 +1,13 @@
+# Windows-optimized requirements
+# Install these if you encounter build errors with pandas
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+# Use pre-built wheel for pandas (no compilation needed)
+pandas>=2.0.0; platform_system != "Windows"
+# For Windows, try installing from pre-built wheels
+pandas>=2.0.0
+openpyxl>=3.1.0
+python-multipart==0.0.6
+
