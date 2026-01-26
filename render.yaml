@@ -1,8 +1,10 @@
 services:
   - type: web
-    name: stock-api-service
+    name: quality-stocks-api
     env: python
-    runtime: python-3.11.7
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
 
