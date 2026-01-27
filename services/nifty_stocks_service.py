@@ -153,3 +153,5 @@ def get_nifty_stocks_service() -> NiftyStocksService:
         _nifty_stocks_service = NiftyStocksService()
     return _nifty_stocks_service
 
+
+

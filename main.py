@@ -1,49 +1,77 @@
 """
-Main FastAPI application for Quality Stocks API Service
+Main FastAPI application for Stock API Service
+Includes Nifty Stocks API endpoints
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes.quality_stocks_routes import router as quality_stocks_router
+from nifty_stocks_routes import router as nifty_stocks_router
+from routes.trendlyne_stocks_routes import router as trendlyne_stocks_router
+from routes.trendlyne_quality_routes import router as trendlyne_quality_router
 
 app = FastAPI(
-    title="Quality Stocks API",
-    description="API service for analyzing and filtering quality stocks from Trendlyne data",
+    title="Stock API Service",
+    description="API service for stock information and Nifty stocks",
     version="1.0.0"
 )
 
-# CORS middleware
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify allowed origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(quality_stocks_router)
+# Include Nifty stocks routes
+app.include_router(nifty_stocks_router)
 
+# Include Trendlyne stocks routes
+app.include_router(trendlyne_stocks_router)
+
+# Include Trendlyne quality stocks routes
+app.include_router(trendlyne_quality_router)
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """Root endpoint with API information"""
     return {
-        "message": "Quality Stocks API Service",
+        "message": "Stock API Service",
         "version": "1.0.0",
         "endpoints": {
-            "great_quality": "/api/quality-stocks/great",
-            "aggressive_quality": "/api/quality-stocks/aggressive",
-            "good_quality": "/api/quality-stocks/good",
-            "all_quality": "/api/quality-stocks/all",
-            "stock_by_code": "/api/quality-stocks/stock/{nse_code}",
-            "search": "/api/quality-stocks/search?query={query}"
-        },
-        "note": "All endpoints return only quality stocks - non-significant stocks are filtered out. No limits applied."
+            "nifty_stocks": "/api/nifty-stocks",
+            "nifty_stocks_by_nse": "/api/nifty-stocks?nseCode=RELIANCE",
+            "nifty_stocks_by_isin": "/api/nifty-stocks?isin=INE467B01029",
+            "nifty_stocks_search": "/api/nifty-stocks?search=Reliance",
+            "trendlyne_stocks": "/api/trendlyne-stocks",
+            "trendlyne_stocks_by_nse": "/api/trendlyne-stocks?nseCode=VENUSREM",
+            "trendlyne_stocks_by_isin": "/api/trendlyne-stocks?isin=INE411B01019",
+            "trendlyne_stocks_search": "/api/trendlyne-stocks?search=Venus",
+            "trendlyne_stocks_refresh": "/api/trendlyne-stocks/refresh",
+            "trendlyne_stocks_statistics": "/api/trendlyne-stocks/statistics",
+            "trendlyne_quality_stocks": "/api/trendlyne-quality",
+            "trendlyne_quality_great": "/api/trendlyne-quality/great",
+            "trendlyne_quality_medium": "/api/trendlyne-quality/medium",
+            "trendlyne_quality_good": "/api/trendlyne-quality/good",
+            "trendlyne_quality_statistics": "/api/trendlyne-quality/statistics",
+            "docs": "/docs",
+            "redoc": "/redoc"
+        }
     }
 
-
 @app.get("/health")
-async def health_check():
+async def health():
     """Health check endpoint"""
-    return {"status": "healthy"}
+    return {"status": "ok", "service": "stock-api-service"}
+
+if __name__ == "__main__":
+    import uvicorn
+    print("🚀 Starting Stock API Service...")
+    print("📋 Nifty Stocks API available at: http://localhost:8000/api/nifty-stocks")
+    print("📊 Trendlyne Stocks API available at: http://localhost:8000/api/trendlyne-stocks")
+    print("⭐ Trendlyne Quality Stocks API available at: http://localhost:8000/api/trendlyne-quality")
+    print("📚 API Documentation at: http://localhost:8000/docs")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
 

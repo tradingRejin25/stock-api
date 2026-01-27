@@ -160,3 +160,5 @@ curl http://localhost:8000/api/nifty-stocks?search=Reliance
 - Use `service.clear_cache()` to reload if CSV is updated
 - The CSV parser handles flexible column naming (case-insensitive)
 
+
+

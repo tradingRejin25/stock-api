@@ -89,3 +89,5 @@ async def get_stock_by_nse_code_path(nse_code: str):
             detail=f"Error loading stock: {str(e)}"
         )
 
+
+
