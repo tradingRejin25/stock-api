@@ -11,6 +11,4 @@ ENV/
 *.sqlite
 *.log
 .DS_Store
-data/*.csv
-!data/.gitkeep
 
