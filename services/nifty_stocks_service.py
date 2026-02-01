@@ -1,6 +1,9 @@
 """
 Service to load and provide Nifty stocks data from Firebase Firestore
+Falls back to CSV file if Firebase is not available
 """
+import csv
+import os
 from typing import List, Optional
 from pydantic import BaseModel
 from config.firebase_config import get_firestore_client
@@ -24,14 +27,34 @@ class NiftyStock(BaseModel):
 
 
 class NiftyStocksService:
-    """Service to load and query Nifty stocks from Firebase Firestore"""
+    """Service to load and query Nifty stocks from Firebase Firestore or CSV fallback"""
     
     COLLECTION_NAME = "nifty_stocks"
     
-    def __init__(self):
-        """Initialize the service with Firebase Firestore"""
-        self.db: FirestoreClient = get_firestore_client()
-        self.collection = self.db.collection(self.COLLECTION_NAME)
+    def __init__(self, csv_path: Optional[str] = None):
+        """Initialize the service with Firebase Firestore, fallback to CSV if unavailable"""
+        self.use_firebase = False
+        self.db: Optional[FirestoreClient] = None
+        self.collection = None
+        self._init_error = None
+        self._csv_stocks: List[NiftyStock] = []
+        self._csv_path = csv_path
+        
+        # Try Firebase first
+        try:
+            self.db = get_firestore_client()
+            self.collection = self.db.collection(self.COLLECTION_NAME)
+            self.use_firebase = True
+            print("✅ Nifty stocks service initialized with Firebase")
+        except Exception as e:
+            # Firebase not available, will use CSV fallback
+            self._init_error = str(e)
+            print(f"⚠️ Firebase not available, using CSV fallback: {str(e)}")
+            self._load_from_csv()
+            if self._csv_stocks:
+                print(f"✅ Loaded {len(self._csv_stocks)} Nifty stocks from CSV")
+            elif self._init_error:
+                print(f"❌ Failed to load CSV: {self._init_error}")
     
     def _doc_to_stock(self, doc_id: str, doc_data: dict) -> NiftyStock:
         """Convert Firestore document to NiftyStock model"""
@@ -41,51 +64,142 @@ class NiftyStocksService:
             isin=doc_data.get('isin', '')
         )
     
-    def get_all_stocks(self) -> List[NiftyStock]:
-        """Get all Nifty stocks from Firebase"""
+    def _load_from_csv(self):
+        """Load Nifty stocks from CSV file"""
+        if self._csv_path is None:
+            # Try multiple possible paths
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            
+            possible_paths = [
+                os.path.join(project_root, 'data', 'nifty_stocks.csv'),
+                os.path.join('data', 'nifty_stocks.csv'),
+                os.path.join(os.getcwd(), 'data', 'nifty_stocks.csv'),
+            ]
+            
+            for path in possible_paths:
+                abs_path = os.path.abspath(path)
+                if os.path.exists(abs_path):
+                    self._csv_path = abs_path
+                    break
+            
+            if self._csv_path is None:
+                # Use first path as default (will show error if file not found)
+                self._csv_path = os.path.abspath(possible_paths[0])
+        
         try:
-            docs = self.collection.stream()
-            stocks = []
-            for doc in docs:
-                stock_data = doc.to_dict()
-                if stock_data:
-                    stocks.append(self._doc_to_stock(doc.id, stock_data))
-            return stocks
+            if not os.path.exists(self._csv_path):
+                self._init_error = f"CSV file not found at: {self._csv_path}"
+                return
+            
+            with open(self._csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                stocks_loaded = 0
+                for row in reader:
+                    # Handle various column name formats
+                    stock_name = (row.get('Stock') or row.get('stockName') or 
+                                 row.get('Stock Name') or row.get('Name') or '').strip()
+                    nse_code = (row.get('NSE Code') or row.get('nseCode') or 
+                               row.get('NSE') or row.get('Code') or '').strip().upper()
+                    isin = (row.get('ISIN') or row.get('isin') or '').strip().upper()
+                    
+                    if stock_name and nse_code and isin:
+                        self._csv_stocks.append(NiftyStock(
+                            stockName=stock_name,
+                            nseCode=nse_code,
+                            isin=isin
+                        ))
+                        stocks_loaded += 1
+                
+                if stocks_loaded == 0:
+                    self._init_error = f"No valid stocks found in CSV file: {self._csv_path}"
+                else:
+                    # Clear any previous error if loading succeeded
+                    self._init_error = None
+        except FileNotFoundError:
+            self._init_error = f"CSV file not found at: {self._csv_path}"
         except Exception as e:
-            raise Exception(f"Failed to fetch stocks from Firebase: {str(e)}")
+            self._init_error = f"Error loading CSV: {str(e)}"
+    
+    def get_all_stocks(self) -> List[NiftyStock]:
+        """Get all Nifty stocks from Firebase or CSV fallback"""
+        if self.use_firebase and self.collection:
+            try:
+                docs = self.collection.stream()
+                stocks = []
+                for doc in docs:
+                    stock_data = doc.to_dict()
+                    if stock_data:
+                        stocks.append(self._doc_to_stock(doc.id, stock_data))
+                return stocks
+            except Exception as e:
+                # If Firebase fails, try CSV fallback
+                if not self._csv_stocks:
+                    self._load_from_csv()
+                if self._csv_stocks:
+                    return self._csv_stocks
+                raise Exception(f"Failed to fetch stocks from Firebase: {str(e)}")
+        else:
+            # Use CSV fallback
+            if not self._csv_stocks:
+                self._load_from_csv()
+            if self._csv_stocks:
+                return self._csv_stocks
+            error_msg = getattr(self, '_init_error', 'Firebase not initialized and CSV not available')
+            raise Exception(
+                f"Nifty stocks service unavailable. "
+                f"Firebase Firestore is not configured and CSV file is not available. "
+                f"Error: {error_msg}"
+            )
     
     def get_stock_by_nse_code(self, nse_code: str) -> Optional[NiftyStock]:
-        """Get stock by NSE code from Firebase"""
-        try:
-            # Query by nseCode field
-            query = self.collection.where('nseCode', '==', nse_code.upper()).limit(1)
-            docs = list(query.stream())
-            
-            if docs:
-                return self._doc_to_stock(docs[0].id, docs[0].to_dict())
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to fetch stock by NSE code from Firebase: {str(e)}")
+        """Get stock by NSE code from Firebase or CSV fallback"""
+        nse_code_upper = nse_code.upper()
+        
+        if self.use_firebase and self.collection:
+            try:
+                query = self.collection.where('nseCode', '==', nse_code_upper).limit(1)
+                docs = list(query.stream())
+                if docs:
+                    return self._doc_to_stock(docs[0].id, docs[0].to_dict())
+            except Exception:
+                # Fall through to CSV fallback
+                pass
+        
+        # CSV fallback
+        if not self._csv_stocks:
+            self._load_from_csv()
+        for stock in self._csv_stocks:
+            if stock.nseCode.upper() == nse_code_upper:
+                return stock
+        return None
     
     def get_stock_by_isin(self, isin: str) -> Optional[NiftyStock]:
-        """Get stock by ISIN from Firebase"""
-        try:
-            # Query by isin field
-            query = self.collection.where('isin', '==', isin.upper()).limit(1)
-            docs = list(query.stream())
-            
-            if docs:
-                return self._doc_to_stock(docs[0].id, docs[0].to_dict())
-            return None
-        except Exception as e:
-            raise Exception(f"Failed to fetch stock by ISIN from Firebase: {str(e)}")
+        """Get stock by ISIN from Firebase or CSV fallback"""
+        isin_upper = isin.upper()
+        
+        if self.use_firebase and self.collection:
+            try:
+                query = self.collection.where('isin', '==', isin_upper).limit(1)
+                docs = list(query.stream())
+                if docs:
+                    return self._doc_to_stock(docs[0].id, docs[0].to_dict())
+            except Exception:
+                # Fall through to CSV fallback
+                pass
+        
+        # CSV fallback
+        if not self._csv_stocks:
+            self._load_from_csv()
+        for stock in self._csv_stocks:
+            if stock.isin.upper() == isin_upper:
+                return stock
+        return None
     
     def search_by_name(self, query: str) -> List[NiftyStock]:
-        """Search stocks by name (case-insensitive partial match) from Firebase"""
+        """Search stocks by name (case-insensitive partial match) from Firebase or CSV"""
         try:
-            # Firestore doesn't support case-insensitive search natively
-            # We'll fetch all and filter in memory (for small datasets)
-            # For larger datasets, consider using Algolia or maintaining lowercase search fields
+            # Get all stocks (will use Firebase or CSV as available)
             all_stocks = self.get_all_stocks()
             query_lower = query.lower()
             return [
@@ -93,7 +207,7 @@ class NiftyStocksService:
                 if query_lower in s.stockName.lower()
             ]
         except Exception as e:
-            raise Exception(f"Failed to search stocks from Firebase: {str(e)}")
+            raise Exception(f"Failed to search stocks: {str(e)}")
     
     def save_stock(self, stock: NiftyStock) -> str:
         """
@@ -103,6 +217,8 @@ class NiftyStocksService:
         Returns:
             Document ID
         """
+        if not self.use_firebase or not self.collection:
+            raise Exception("Save operation requires Firebase. CSV mode is read-only.")
         try:
             doc_id = stock.isin.upper()
             doc_ref = self.collection.document(doc_id)
@@ -122,6 +238,8 @@ class NiftyStocksService:
         Returns:
             Number of stocks saved
         """
+        if not self.use_firebase or not self.db or not self.collection:
+            raise Exception("Save operation requires Firebase. CSV mode is read-only.")
         try:
             batch = self.db.batch()
             count = 0
@@ -148,6 +266,8 @@ class NiftyStocksService:
         Returns:
             True if deleted, False if not found
         """
+        if not self.use_firebase or not self.collection:
+            raise Exception("Delete operation requires Firebase. CSV mode is read-only.")
         try:
             doc_ref = self.collection.document(isin.upper())
             doc = doc_ref.get()

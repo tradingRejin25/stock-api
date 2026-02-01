@@ -31,9 +31,9 @@ async def get_nifty_stocks(
     
     If no filters are provided, returns all stocks.
     """
-    service = get_nifty_stocks_service()
-    
     try:
+        service = get_nifty_stocks_service()
+        
         # Filter by NSE code
         if nseCode:
             stock = service.get_stock_by_nse_code(nseCode)
@@ -63,19 +63,38 @@ async def get_nifty_stocks(
         stocks = service.get_all_stocks()
         return NiftyStocksResponse(count=len(stocks), stocks=stocks)
     
+    except HTTPException:
+        raise
     except Exception as e:
+        error_message = str(e)
+        # Log the error for debugging
+        import traceback
+        print(f"❌ Error in get_nifty_stocks: {error_message}")
+        print(traceback.format_exc())
+        
+        # Provide more helpful error message
+        if "Firebase" in error_message or "Firestore" in error_message:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Nifty stocks service unavailable: Firebase Firestore is not configured. "
+                       f"Please configure Firebase credentials or ensure CSV file is available. Error: {error_message}"
+            )
+        elif "CSV" in error_message or "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=503,
+                detail=f"Nifty stocks service unavailable: {error_message}"
+            )
         raise HTTPException(
             status_code=500,
-            detail=f"Error loading Nifty stocks: {str(e)}"
+            detail=f"Error loading Nifty stocks: {error_message}"
         )
 
 
 @router.get("/{nse_code}", response_model=NiftyStock)
 async def get_stock_by_nse_code_path(nse_code: str):
     """Get a specific stock by NSE code (path parameter)"""
-    service = get_nifty_stocks_service()
-    
     try:
+        service = get_nifty_stocks_service()
         stock = service.get_stock_by_nse_code(nse_code)
         if not stock:
             raise HTTPException(
@@ -83,10 +102,30 @@ async def get_stock_by_nse_code_path(nse_code: str):
                 detail=f"Stock not found for NSE code: {nse_code}"
             )
         return stock
+    except HTTPException:
+        raise
     except Exception as e:
+        error_message = str(e)
+        # Log the error for debugging
+        import traceback
+        print(f"❌ Error in get_stock_by_nse_code_path: {error_message}")
+        print(traceback.format_exc())
+        
+        # Provide more helpful error message
+        if "Firebase" in error_message or "Firestore" in error_message:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Nifty stocks service unavailable: Firebase Firestore is not configured. "
+                       f"Please configure Firebase credentials or ensure CSV file is available. Error: {error_message}"
+            )
+        elif "CSV" in error_message or "not found" in error_message.lower():
+            raise HTTPException(
+                status_code=503,
+                detail=f"Nifty stocks service unavailable: {error_message}"
+            )
         raise HTTPException(
             status_code=500,
-            detail=f"Error loading stock: {str(e)}"
+            detail=f"Error loading stock: {error_message}"
         )
 
 
