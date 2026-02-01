@@ -107,6 +107,26 @@ class StockResponse(BaseModel):
     tlChecklistPositiveScore: Optional[int]
     tlChecklistNegativeScore: Optional[int]
     
+    # SWOT Analysis
+    swotStrengths: Optional[int]
+    swotWeakness: Optional[int]
+    swotOpportunities: Optional[int]
+    swotThreats: Optional[int]
+    
+    # Additional Sector/Industry Metrics
+    sectorRoce: Optional[float]
+    industryRoce: Optional[float]
+    sectorRoe: Optional[float]
+    industryRoe: Optional[float]
+    sectorPegTtm: Optional[float]
+    industryPegTtm: Optional[float]
+    sectorNetProfitGrowthQtrQoq: Optional[float]
+    sectorNetProfitGrowthAnnYoy: Optional[float]
+    industryNetProfitGrowthQtrQoq: Optional[float]
+    industryNetProfitGrowthAnnYoy: Optional[float]
+    priceToBookAdjusted: Optional[float]
+    fcEst1QForwardEbitQtr: Optional[float]
+    
     class Config:
         from_attributes = True
 
@@ -216,6 +236,22 @@ def _stock_to_response(stock: QualityStock) -> StockResponse:
         sectorScore=stock.sector_score,
         tlChecklistPositiveScore=stock.tl_checklist_positive_score,
         tlChecklistNegativeScore=stock.tl_checklist_negative_score,
+        swotStrengths=stock.swot_strengths,
+        swotWeakness=stock.swot_weakness,
+        swotOpportunities=stock.swot_opportunities,
+        swotThreats=stock.swot_threats,
+        sectorRoce=stock.sector_roce,
+        industryRoce=stock.industry_roce,
+        sectorRoe=stock.sector_roe,
+        industryRoe=stock.industry_roe,
+        sectorPegTtm=stock.sector_peg_ttm,
+        industryPegTtm=stock.industry_peg_ttm,
+        sectorNetProfitGrowthQtrQoq=stock.sector_net_profit_growth_qtr_qoq,
+        sectorNetProfitGrowthAnnYoy=stock.sector_net_profit_growth_ann_yoy,
+        industryNetProfitGrowthQtrQoq=stock.industry_net_profit_growth_qtr_qoq,
+        industryNetProfitGrowthAnnYoy=stock.industry_net_profit_growth_ann_yoy,
+        priceToBookAdjusted=stock.price_to_book_adjusted,
+        fcEst1QForwardEbitQtr=stock.fc_est_1q_forward_ebit_qtr,
     )
 
 

@@ -237,3 +237,11 @@ async def get_quality_stock_by_identifier(identifier: str):
             detail=f"Error loading quality stock: {str(e)}"
         )
 
+
+
+
+
+
+
+
+

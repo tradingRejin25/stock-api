@@ -113,6 +113,26 @@ class QualityStock:
     tl_checklist_positive_score: Optional[int]
     tl_checklist_negative_score: Optional[int]
     
+    # SWOT Analysis
+    swot_strengths: Optional[int]
+    swot_weakness: Optional[int]
+    swot_opportunities: Optional[int]
+    swot_threats: Optional[int]
+    
+    # Additional Sector/Industry Metrics
+    sector_roce: Optional[float]
+    industry_roce: Optional[float]
+    sector_roe: Optional[float]
+    industry_roe: Optional[float]
+    sector_peg_ttm: Optional[float]
+    industry_peg_ttm: Optional[float]
+    sector_net_profit_growth_qtr_qoq: Optional[float]
+    sector_net_profit_growth_ann_yoy: Optional[float]
+    industry_net_profit_growth_qtr_qoq: Optional[float]
+    industry_net_profit_growth_ann_yoy: Optional[float]
+    price_to_book_adjusted: Optional[float]
+    fc_est_1q_forward_ebit_qtr: Optional[float]
+    
     # Quality Score (calculated)
     quality_score: float = 0.0
     quality_tier: str = ""
@@ -287,6 +307,26 @@ class QualityStocksService:
                             sector_score=self._safe_int(row.get('Sector Score', 0)) if row.get('Sector Score') else None,
                             tl_checklist_positive_score=self._safe_int(row.get('TL Checklist Positive Score', 0)) if row.get('TL Checklist Positive Score') else None,
                             tl_checklist_negative_score=self._safe_int(row.get('TL Checklist Negative Score', 0)) if row.get('TL Checklist Negative Score') else None,
+                            
+                            # SWOT Analysis
+                            swot_strengths=self._safe_int(row.get('SWOT Strengths', 0)) if row.get('SWOT Strengths') else None,
+                            swot_weakness=self._safe_int(row.get('SWOT Weakness', 0)) if row.get('SWOT Weakness') else None,
+                            swot_opportunities=self._safe_int(row.get('SWOT Opportunities', 0)) if row.get('SWOT Opportunities') else None,
+                            swot_threats=self._safe_int(row.get('SWOT Threats', 0)) if row.get('SWOT Threats') else None,
+                            
+                            # Additional Sector/Industry Metrics
+                            sector_roce=self._safe_float(row.get('Sector ROCE', 0)) if row.get('Sector ROCE') else None,
+                            industry_roce=self._safe_float(row.get('Industry ROCE', 0)) if row.get('Industry ROCE') else None,
+                            sector_roe=self._safe_float(row.get('Sector ROE', 0)) if row.get('Sector ROE') else None,
+                            industry_roe=self._safe_float(row.get('Industry ROE', 0)) if row.get('Industry ROE') else None,
+                            sector_peg_ttm=self._safe_float(row.get('Sector PEG TTM', 0)) if row.get('Sector PEG TTM') else None,
+                            industry_peg_ttm=self._safe_float(row.get('Industry PEG TTM', 0)) if row.get('Industry PEG TTM') else None,
+                            sector_net_profit_growth_qtr_qoq=self._safe_float(row.get('Sector Net Profit Growth Qtr QoQ %', 0)) if row.get('Sector Net Profit Growth Qtr QoQ %') else None,
+                            sector_net_profit_growth_ann_yoy=self._safe_float(row.get('Sector Net Profit Growth Ann  YoY %', 0)) if row.get('Sector Net Profit Growth Ann  YoY %') else None,
+                            industry_net_profit_growth_qtr_qoq=self._safe_float(row.get('Industry Net Profit Growth Qtr QoQ %', 0)) if row.get('Industry Net Profit Growth Qtr QoQ %') else None,
+                            industry_net_profit_growth_ann_yoy=self._safe_float(row.get('Industry Net Profit Growth Ann  YoY %', 0)) if row.get('Industry Net Profit Growth Ann  YoY %') else None,
+                            price_to_book_adjusted=self._safe_float(row.get('PBV Adjusted', 0)) if row.get('PBV Adjusted') else None,
+                            fc_est_1q_forward_ebit_qtr=self._safe_float(row.get('FC Est  1Q forward EBIT Qtr', 0)) if row.get('FC Est  1Q forward EBIT Qtr') else None,
                         )
                         
                         # Calculate additional insights
