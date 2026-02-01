@@ -2,7 +2,7 @@
 FastAPI routes for Trendlyne Quality Stocks API endpoints
 """
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from services.trendlyne_quality_service import (
     get_trendlyne_quality_service, 
     QualityFilteredStock,
@@ -13,11 +13,223 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/trendlyne-quality", tags=["Trendlyne Quality Stocks"])
 
 
+def _get_value_from_data(data: Dict[str, Any], excel_field: str, default: Any = None) -> Any:
+    """Get value from data dict using Excel field name"""
+    return data.get(excel_field, default)
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert value to float"""
+    if value is None or value == '' or value == '-':
+        return default
+    try:
+        if isinstance(value, str):
+            value = value.replace(',', '').strip()
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _safe_int(value: Any, default: int = None) -> Optional[int]:
+    """Safely convert value to int"""
+    if value is None or value == '' or value == '-':
+        return default
+    try:
+        if isinstance(value, str):
+            value = value.replace(',', '').strip()
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
+
+class QualityFilteredStockResponse(BaseModel):
+    """Response model for a quality filtered stock with mapped field names (NO Excel field names)"""
+    # Basic Information
+    stockName: str
+    nseCode: Optional[str]
+    bseCode: Optional[str]
+    isin: Optional[str]
+    
+    # Core Quality Metrics (mapped from Excel fields)
+    roe: float
+    roce: float
+    debtToEquity: float
+    interestCoverage: float
+    currentRatio: float
+    currentRatioTtm: float
+    promoterHolding: float
+    promoterHoldingChangeQoq: float
+    
+    # Growth Metrics
+    epsTtmGrowth: float
+    epsQtrYoYGrowth: float
+    basicEpsQoqGrowth: float
+    basicEpsTtm: float
+    netProfit3YGrowth: float
+    netProfit5YGrowth: float
+    netProfitQoqGrowth: float
+    
+    # Profitability Metrics
+    opmAnn: float
+    opmTtm: float
+    npmTtm: float
+    ebitdaAnn: float
+    ebitdaTtm: float
+    ebitdaAnnMargin: float
+    
+    # Valuation Metrics
+    pegTtm: Optional[float]
+    priceToBook: Optional[float]
+    priceToBookAdjusted: Optional[float]
+    evPerEbitdaAnn: Optional[float]
+    priceToSalesAnn: Optional[float]
+    priceToSalesTtm: Optional[float]
+    
+    # Trendlyne Scores
+    durabilityScore: Optional[int]
+    valuationScore: Optional[int]
+    industryScore: Optional[int]
+    sectorScore: Optional[int]
+    
+    # Quality Scores
+    piotroskiScore: Optional[int]
+    altmanZscore: Optional[float]
+    
+    # Promoter Metrics
+    promoterPledgePercentage: float
+    
+    # Sector/Industry Metrics
+    sectorRoce: Optional[float]
+    industryRoce: Optional[float]
+    sectorRoe: Optional[float]
+    industryRoe: Optional[float]
+    sectorPegTtm: Optional[float]
+    industryPegTtm: Optional[float]
+    sectorPbvTtm: Optional[float]
+    industryPbvTtm: Optional[float]
+    sectorNetProfitGrowthQtrQoq: Optional[float]
+    sectorNetProfitGrowthAnnYoy: Optional[float]
+    industryNetProfitGrowthQtrQoq: Optional[float]
+    industryNetProfitGrowthAnnYoy: Optional[float]
+    
+    # SWOT Analysis
+    swotStrengths: Optional[int]
+    swotWeakness: Optional[int]
+    swotOpportunities: Optional[int]
+    swotThreats: Optional[int]
+    
+    # Forward Estimates
+    fcEst1QForwardEbitQtr: Optional[float]
+    fcEst1QFwdCashEpsQtr: Optional[float]
+    fcEst1QFwdInterestExpenseQtr: Optional[float]
+    
+    # Quality Metrics (from QualityFilteredStock)
+    qualityScore: float
+    qualityTier: str
+    qualityNotes: List[str]
+    passedCriteria: Dict[str, bool]
+    
+    class Config:
+        from_attributes = True
+
+
+def _quality_stock_to_response(stock: QualityFilteredStock) -> QualityFilteredStockResponse:
+    """Convert QualityFilteredStock to QualityFilteredStockResponse with mapped field names"""
+    data = stock.data
+    
+    return QualityFilteredStockResponse(
+        # Basic Information
+        stockName=stock.stock,
+        nseCode=stock.nse_code,
+        bseCode=stock.bse_code,
+        isin=stock.isin,
+        
+        # Core Quality Metrics (mapped from Excel field names)
+        roe=_safe_float(_get_value_from_data(data, 'ROE Ann  %')),
+        roce=_safe_float(_get_value_from_data(data, 'ROCE Ann  %')),
+        debtToEquity=_safe_float(_get_value_from_data(data, 'Total Debt to Total Equity Ann ')),
+        interestCoverage=_safe_float(_get_value_from_data(data, 'Interest Coverage Ratio Ann ')),
+        currentRatio=_safe_float(_get_value_from_data(data, 'Current Ratio Ann ')),
+        currentRatioTtm=_safe_float(_get_value_from_data(data, 'Current Ratio TTM')),
+        promoterHolding=_safe_float(_get_value_from_data(data, 'Promoter holding latest %')),
+        promoterHoldingChangeQoq=_safe_float(_get_value_from_data(data, 'Promoter holding change QoQ %')),
+        
+        # Growth Metrics
+        epsTtmGrowth=_safe_float(_get_value_from_data(data, 'EPS TTM Growth %')),
+        epsQtrYoYGrowth=_safe_float(_get_value_from_data(data, 'EPS Qtr YoY Growth %')),
+        basicEpsQoqGrowth=_safe_float(_get_value_from_data(data, 'Basic EPS QoQ Growth %')),
+        basicEpsTtm=_safe_float(_get_value_from_data(data, 'Basic EPS TTM')),
+        netProfit3YGrowth=_safe_float(_get_value_from_data(data, 'Net Profit 3Y Growth %')),
+        netProfit5YGrowth=_safe_float(_get_value_from_data(data, 'Net Profit 5Y Growth %')),
+        netProfitQoqGrowth=_safe_float(_get_value_from_data(data, 'Net Profit QoQ Growth %')),
+        
+        # Profitability Metrics
+        opmAnn=_safe_float(_get_value_from_data(data, 'OPM Ann  %')),
+        opmTtm=_safe_float(_get_value_from_data(data, 'OPM TTM %')),
+        npmTtm=_safe_float(_get_value_from_data(data, 'NPM TTM %')),
+        ebitdaAnn=_safe_float(_get_value_from_data(data, 'EBITDA Ann ')),
+        ebitdaTtm=_safe_float(_get_value_from_data(data, 'EBITDA TTM')),
+        ebitdaAnnMargin=_safe_float(_get_value_from_data(data, 'EBITDA Ann  Margin %')),
+        
+        # Valuation Metrics
+        pegTtm=_safe_float(_get_value_from_data(data, 'PEG TTM'), None),
+        priceToBook=_safe_float(_get_value_from_data(data, 'Industry PBV TTM'), None),
+        priceToBookAdjusted=_safe_float(_get_value_from_data(data, 'PBV Adjusted'), None),
+        evPerEbitdaAnn=_safe_float(_get_value_from_data(data, 'EV Per EBITDA Ann '), None),
+        priceToSalesAnn=_safe_float(_get_value_from_data(data, 'Price To Sales Ann '), None),
+        priceToSalesTtm=_safe_float(_get_value_from_data(data, 'Price to Sales TTM'), None),
+        
+        # Trendlyne Scores
+        durabilityScore=_safe_int(_get_value_from_data(data, 'Durability Score')),
+        valuationScore=_safe_int(_get_value_from_data(data, 'Valuation Score')),
+        industryScore=_safe_int(_get_value_from_data(data, 'Industry Score')),
+        sectorScore=_safe_int(_get_value_from_data(data, 'Sector Score')),
+        
+        # Quality Scores
+        piotroskiScore=_safe_int(_get_value_from_data(data, 'Piotroski Score')),
+        altmanZscore=_safe_float(_get_value_from_data(data, 'Altman Zscore'), None),
+        
+        # Promoter Metrics
+        promoterPledgePercentage=_safe_float(_get_value_from_data(data, 'Promoter holding pledge percentage % Qtr')),
+        
+        # Sector/Industry Metrics
+        sectorRoce=_safe_float(_get_value_from_data(data, 'Sector ROCE'), None),
+        industryRoce=_safe_float(_get_value_from_data(data, 'Industry ROCE'), None),
+        sectorRoe=_safe_float(_get_value_from_data(data, 'Sector ROE'), None),
+        industryRoe=_safe_float(_get_value_from_data(data, 'Industry ROE'), None),
+        sectorPegTtm=_safe_float(_get_value_from_data(data, 'Sector PEG TTM'), None),
+        industryPegTtm=_safe_float(_get_value_from_data(data, 'Industry PEG TTM'), None),
+        sectorPbvTtm=_safe_float(_get_value_from_data(data, 'Sector PBV TTM'), None),
+        industryPbvTtm=_safe_float(_get_value_from_data(data, 'Industry PBV TTM'), None),
+        sectorNetProfitGrowthQtrQoq=_safe_float(_get_value_from_data(data, 'Sector Net Profit Growth Qtr QoQ %'), None),
+        sectorNetProfitGrowthAnnYoy=_safe_float(_get_value_from_data(data, 'Sector Net Profit Growth Ann  YoY %'), None),
+        industryNetProfitGrowthQtrQoq=_safe_float(_get_value_from_data(data, 'Industry Net Profit Growth Qtr QoQ %'), None),
+        industryNetProfitGrowthAnnYoy=_safe_float(_get_value_from_data(data, 'Industry Net Profit Growth Ann  YoY %'), None),
+        
+        # SWOT Analysis
+        swotStrengths=_safe_int(_get_value_from_data(data, 'SWOT Strengths')),
+        swotWeakness=_safe_int(_get_value_from_data(data, 'SWOT Weakness')),
+        swotOpportunities=_safe_int(_get_value_from_data(data, 'SWOT Opportunities')),
+        swotThreats=_safe_int(_get_value_from_data(data, 'SWOT Threats')),
+        
+        # Forward Estimates
+        fcEst1QForwardEbitQtr=_safe_float(_get_value_from_data(data, 'FC Est  1Q forward EBIT Qtr'), None),
+        fcEst1QFwdCashEpsQtr=_safe_float(_get_value_from_data(data, 'FC Est  1Q fwd Cash EPS Qtr'), None),
+        fcEst1QFwdInterestExpenseQtr=_safe_float(_get_value_from_data(data, 'FC Est  1Q fwd Interest Expense Qtr'), None),
+        
+        # Quality Metrics
+        qualityScore=stock.quality_score,
+        qualityTier=stock.quality_tier.value,
+        qualityNotes=stock.quality_notes,
+        passedCriteria=stock.passed_criteria,
+    )
+
+
 class QualityStocksResponse(BaseModel):
     """Response model for quality stocks list"""
     count: int
     tier: str
-    stocks: List[QualityFilteredStock]
+    stocks: List[QualityFilteredStockResponse]
 
 
 class QualityStatisticsResponse(BaseModel):
@@ -93,7 +305,7 @@ async def get_quality_stocks(
         return QualityStocksResponse(
             count=len(stocks),
             tier=tier_name,
-            stocks=stocks
+            stocks=[_quality_stock_to_response(stock) for stock in stocks]
         )
     
     except HTTPException:
@@ -121,7 +333,7 @@ async def get_great_quality_stocks(
         return QualityStocksResponse(
             count=len(stocks),
             tier="great",
-            stocks=stocks
+            stocks=[_quality_stock_to_response(stock) for stock in stocks]
         )
     except Exception as e:
         raise HTTPException(
@@ -146,7 +358,7 @@ async def get_medium_quality_stocks(
         return QualityStocksResponse(
             count=len(stocks),
             tier="medium",
-            stocks=stocks
+            stocks=[_quality_stock_to_response(stock) for stock in stocks]
         )
     except Exception as e:
         raise HTTPException(
@@ -171,7 +383,7 @@ async def get_good_quality_stocks(
         return QualityStocksResponse(
             count=len(stocks),
             tier="good",
-            stocks=stocks
+            stocks=[_quality_stock_to_response(stock) for stock in stocks]
         )
     except Exception as e:
         raise HTTPException(
@@ -203,7 +415,7 @@ async def get_quality_statistics():
         )
 
 
-@router.get("/{identifier}", response_model=QualityFilteredStock)
+@router.get("/{identifier}", response_model=QualityFilteredStockResponse)
 async def get_quality_stock_by_identifier(identifier: str):
     """
     Get a specific quality stock by NSE code, BSE code, or ISIN
@@ -218,11 +430,11 @@ async def get_quality_stock_by_identifier(identifier: str):
         # Try to find by identifier
         for stock in all_quality_stocks:
             if stock.isin and stock.isin.upper() == identifier.upper():
-                return stock
+                return _quality_stock_to_response(stock)
             if stock.nse_code and stock.nse_code.upper() == identifier.upper():
-                return stock
+                return _quality_stock_to_response(stock)
             if stock.bse_code and stock.bse_code.upper() == identifier.upper():
-                return stock
+                return _quality_stock_to_response(stock)
         
         raise HTTPException(
             status_code=404,

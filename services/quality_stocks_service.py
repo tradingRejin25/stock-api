@@ -10,134 +10,89 @@ from dataclasses import dataclass, asdict
 
 @dataclass
 class QualityStock:
-    """Represents a stock with quality metrics"""
-    stock_name: str
-    nse_code: str
-    isin: str
-    market_cap: float
+    """Represents a stock with quality metrics - ONLY fields that exist in CSV"""
+    # Basic Information (from CSV)
+    stock_name: str  # 'Stock'
+    nse_code: str  # 'NSE Code'
+    bse_code: str  # 'BSE Code'
+    isin: str  # 'ISIN'
     
-    # Core Quality Metrics
-    roe: float
-    roce: float
-    debt_to_equity: float
-    interest_coverage: float
-    current_ratio: float
-    promoter_holding: float
-    promoter_holding_change_1y: float
+    # Core Quality Metrics (from CSV)
+    roe: float  # 'ROE Ann  %'
+    roce: float  # 'ROCE Ann  %'
+    debt_to_equity: float  # 'Total Debt to Total Equity Ann '
+    interest_coverage: float  # 'Interest Coverage Ratio Ann '
+    current_ratio: float  # 'Current Ratio Ann '
+    current_ratio_ttm: float  # 'Current Ratio TTM'
+    promoter_holding: float  # 'Promoter holding latest %'
+    promoter_holding_change_qoq: float  # 'Promoter holding change QoQ %'
     
-    # Growth Metrics
-    eps_ttm_growth: float
-    operating_rev_growth_ttm: float
-    net_profit_ann: float
-    net_profit_ann_1y_ago: float
-    opm_ann: float
-    opm_ann_1y_ago: float
-    basic_eps_ttm: float
-    basic_eps_ttm_1y_ago: float
+    # Growth Metrics (from CSV)
+    eps_ttm_growth: float  # 'EPS TTM Growth %'
+    eps_qtr_yoy_growth: float  # 'EPS Qtr YoY Growth %'
+    basic_eps_qoq_growth: float  # 'Basic EPS QoQ Growth %'
+    basic_eps_ttm: float  # 'Basic EPS TTM'
+    net_profit_3y_growth: float  # 'Net Profit 3Y Growth %'
+    net_profit_5y_growth: float  # 'Net Profit 5Y Growth %'
+    net_profit_qoq_growth: float  # 'Net Profit QoQ Growth %'
     
-    # Valuation Metrics
-    pe_ttm: Optional[float]
-    industry_pe_ttm: Optional[float]
-    peg_ttm: Optional[float]
-    price_to_book: Optional[float]
-    ev_per_ebitda_ann: Optional[float]
+    # Profitability Metrics (from CSV)
+    opm_ann: float  # 'OPM Ann  %'
+    opm_ttm: float  # 'OPM TTM %'
+    npm_ttm: float  # 'NPM TTM %'
+    ebitda_ann: float  # 'EBITDA Ann '
+    ebitda_ttm: float  # 'EBITDA TTM'
+    ebitda_ann_margin: float  # 'EBITDA Ann  Margin %'
     
-    # Trendlyne Scores
-    durability_score: Optional[int]
-    valuation_score: Optional[int]
+    # Valuation Metrics (from CSV)
+    peg_ttm: Optional[float]  # 'PEG TTM'
+    price_to_book: Optional[float]  # 'Industry PBV TTM'
+    price_to_book_adjusted: Optional[float]  # 'PBV Adjusted'
+    ev_per_ebitda_ann: Optional[float]  # 'EV Per EBITDA Ann '
+    price_to_sales_ann: Optional[float]  # 'Price To Sales Ann '
+    price_to_sales_ttm: Optional[float]  # 'Price to Sales TTM'
     
-    # Quality Scores (Academic/Research-based)
-    piotroski_score: Optional[int]
-    altman_zscore: Optional[float]
-    tobin_q_ratio: Optional[float]
-    graham_number: Optional[float]
+    # Trendlyne Scores (from CSV)
+    durability_score: Optional[int]  # 'Durability Score'
+    valuation_score: Optional[int]  # 'Valuation Score'
+    industry_score: Optional[int]  # 'Industry Score'
+    sector_score: Optional[int]  # 'Sector Score'
     
-    # Additional Metrics
-    eps_qtr_yoy_growth: float
-    basic_eps_qoq_growth: float
-    npm_ann: float
-    npm_ttm: float
+    # Quality Scores (from CSV)
+    piotroski_score: Optional[int]  # 'Piotroski Score'
+    altman_zscore: Optional[float]  # 'Altman Zscore'
     
-    # Quarterly Data for Better Analysis
-    basic_eps_qtr: float
-    basic_eps_1q_ago: float
-    basic_eps_2q_ago: float
-    net_profit_qtr: float
-    net_profit_1q_ago: float
-    net_profit_2q_ago: float
-    opm_qtr: float
-    opm_1q_ago: float
-    opm_qtr_4q_ago: float
+    # Promoter Metrics (from CSV)
+    promoter_pledge_percentage: float  # 'Promoter holding pledge percentage % Qtr'
     
-    # Promoter Holding Trends
-    promoter_holding_change_qoq: float
-    promoter_holding_change_2y: float
+    # Sector/Industry Metrics (from CSV)
+    sector_roce: Optional[float]  # 'Sector ROCE'
+    industry_roce: Optional[float]  # 'Industry ROCE'
+    sector_roe: Optional[float]  # 'Sector ROE'
+    industry_roe: Optional[float]  # 'Industry ROE'
+    sector_peg_ttm: Optional[float]  # 'Sector PEG TTM'
+    industry_peg_ttm: Optional[float]  # 'Industry PEG TTM'
+    sector_pbv_ttm: Optional[float]  # 'Sector PBV TTM'
+    industry_pbv_ttm: Optional[float]  # 'Industry PBV TTM'
+    sector_net_profit_growth_qtr_qoq: Optional[float]  # 'Sector Net Profit Growth Qtr QoQ %'
+    sector_net_profit_growth_ann_yoy: Optional[float]  # 'Sector Net Profit Growth Ann  YoY %'
+    industry_net_profit_growth_qtr_qoq: Optional[float]  # 'Industry Net Profit Growth Qtr QoQ %'
+    industry_net_profit_growth_ann_yoy: Optional[float]  # 'Industry Net Profit Growth Ann  YoY %'
     
-    # Additional Valuation
-    sector_pe_ttm: Optional[float]
-    sector_pbv_ttm: Optional[float]
-    industry_pbv_ttm: Optional[float]
+    # SWOT Analysis (from CSV)
+    swot_strengths: Optional[int]  # 'SWOT Strengths'
+    swot_weakness: Optional[int]  # 'SWOT Weakness'
+    swot_opportunities: Optional[int]  # 'SWOT Opportunities'
+    swot_threats: Optional[int]  # 'SWOT Threats'
     
-    # Additional Quality Metrics (from CSV)
-    roa_ann: float  # Return on Assets
-    roa_ann_1y_ago: float
-    roe_1y_ago: float  # For trend analysis
-    roe_2y_ago: float
-    roe_3y_ago: float
-    roce_3y_avg: float  # ROCE 3-year average
-    roce_5y_avg: float  # ROCE 5-year average
-    cash_flow_return_on_assets: float
-    cash_flow_return_on_assets_1y_ago: float
-    cash_eps_ann: float
-    cash_eps_ann_1y_ago: float
-    cash_eps_1y_growth: float
-    working_capital_turnover: float
-    book_value: float
-    price_to_sales_ann: Optional[float]
-    price_to_sales_ttm: Optional[float]
-    price_to_cashflow: Optional[float]
-    graham_ratio: Optional[float]
-    operating_profit_ttm: float
-    operating_profit_ttm_1y_ago: float
-    operating_profit_growth_qtr_yoy: float
-    ebitda_ann: float
-    ebitda_ttm: float
-    ebitda_ann_margin: float
-    ebit_ann_margin: float
-    ebitda_qtr_yoy_growth: float
-    promoter_pledge_percentage: float
-    gross_npa_ratio: Optional[float]  # For banks
-    capital_adequacy_ratio: Optional[float]  # For banks
-    industry_score: Optional[int]
-    sector_score: Optional[int]
-    tl_checklist_positive_score: Optional[int]
-    tl_checklist_negative_score: Optional[int]
+    # Forward Estimates (from CSV)
+    fc_est_1q_forward_ebit_qtr: Optional[float]  # 'FC Est  1Q forward EBIT Qtr'
+    fc_est_1q_fwd_cash_eps_qtr: Optional[float]  # 'FC Est  1Q fwd Cash EPS Qtr'
+    fc_est_1q_fwd_interest_expense_qtr: Optional[float]  # 'FC Est  1Q fwd Interest Expense Qtr'
     
-    # SWOT Analysis
-    swot_strengths: Optional[int]
-    swot_weakness: Optional[int]
-    swot_opportunities: Optional[int]
-    swot_threats: Optional[int]
-    
-    # Additional Sector/Industry Metrics
-    sector_roce: Optional[float]
-    industry_roce: Optional[float]
-    sector_roe: Optional[float]
-    industry_roe: Optional[float]
-    sector_peg_ttm: Optional[float]
-    industry_peg_ttm: Optional[float]
-    sector_net_profit_growth_qtr_qoq: Optional[float]
-    sector_net_profit_growth_ann_yoy: Optional[float]
-    industry_net_profit_growth_qtr_qoq: Optional[float]
-    industry_net_profit_growth_ann_yoy: Optional[float]
-    price_to_book_adjusted: Optional[float]
-    fc_est_1q_forward_ebit_qtr: Optional[float]
-    
-    # Quality Score (calculated)
+    # Calculated/Computed Fields (NOT from CSV - these are OK to keep)
     quality_score: float = 0.0
     quality_tier: str = ""
-    
-    # Calculated Insights
     consecutive_positive_quarters: int = 0
     profit_growth_consistency: str = ""
     margin_stability: str = ""
@@ -248,11 +203,13 @@ class QualityStocksService:
                             else:
                                 valuation_score = None
                             
+                            # ONLY read fields that actually exist in CSV
                             stock = QualityStock(
+                            # Basic Information
                             stock_name=row.get('Stock', '').strip(),
                             nse_code=row.get('NSE Code', '').strip(),
+                            bse_code=row.get('BSE Code', '').strip(),
                             isin=row.get('ISIN', '').strip(),
-                            market_cap=self._safe_float(row.get('Market Cap', 0)),
                             
                             # Core Quality Metrics
                             roe=self._safe_float(row.get('ROE Ann  %', 0)),
@@ -260,98 +217,61 @@ class QualityStocksService:
                             debt_to_equity=self._safe_float(row.get('Total Debt to Total Equity Ann ', 0)),
                             interest_coverage=self._safe_float(row.get('Interest Coverage Ratio Ann ', 0)),
                             current_ratio=self._safe_float(row.get('Current Ratio Ann ', 0)),
+                            current_ratio_ttm=self._safe_float(row.get('Current Ratio TTM', 0)),
                             promoter_holding=self._safe_float(row.get('Promoter holding latest %', 0)),
-                            promoter_holding_change_1y=self._safe_float(row.get('Promoter holding change 1Y %', 0)),
+                            promoter_holding_change_qoq=self._safe_float(row.get('Promoter holding change QoQ %', 0)),
                             
                             # Growth Metrics
                             eps_ttm_growth=self._safe_float(row.get('EPS TTM Growth %', 0)),
-                            operating_rev_growth_ttm=self._safe_float(row.get('Operating Rev  growth TTM %', 0)),
-                            net_profit_ann=self._safe_float(row.get('Net Profit Ann ', 0)),
-                            net_profit_ann_1y_ago=self._safe_float(row.get('Net Profit Ann  1Y Ago', 0)),
-                            opm_ann=self._safe_float(row.get('OPM Ann  %', 0)),
-                            opm_ann_1y_ago=self._safe_float(row.get('OPM Ann  1Y ago %', 0)),
+                            eps_qtr_yoy_growth=self._safe_float(row.get('EPS Qtr YoY Growth %', 0)),
+                            basic_eps_qoq_growth=self._safe_float(row.get('Basic EPS QoQ Growth %', 0)),
                             basic_eps_ttm=self._safe_float(row.get('Basic EPS TTM', 0)),
-                            basic_eps_ttm_1y_ago=self._safe_float(row.get('Basic EPS TTM 1Y Ago', 0)),
+                            net_profit_3y_growth=self._safe_float(row.get('Net Profit 3Y Growth %', 0)),
+                            net_profit_5y_growth=self._safe_float(row.get('Net Profit 5Y Growth %', 0)),
+                            net_profit_qoq_growth=self._safe_float(row.get('Net Profit QoQ Growth %', 0)),
+                            
+                            # Profitability Metrics
+                            opm_ann=self._safe_float(row.get('OPM Ann  %', 0)),
+                            opm_ttm=self._safe_float(row.get('OPM TTM %', 0)),
+                            npm_ttm=self._safe_float(row.get('NPM TTM %', 0)),
+                            ebitda_ann=self._safe_float(row.get('EBITDA Ann ', 0)),
+                            ebitda_ttm=self._safe_float(row.get('EBITDA TTM', 0)),
+                            ebitda_ann_margin=self._safe_float(row.get('EBITDA Ann  Margin %', 0)),
                             
                             # Valuation Metrics
-                            # Note: Individual stock PE TTM not in CSV, can be calculated as Market Cap / (EPS * Shares)
-                            # For now, using None - can be enhanced if needed
-                            pe_ttm=None,
-                            industry_pe_ttm=self._safe_float(row.get('Industry PE TTM', 0)) if row.get('Industry PE TTM') else None,
                             peg_ttm=self._safe_float(row.get('PEG TTM', 0)) if row.get('PEG TTM') else None,
                             price_to_book=self._safe_float(row.get('Industry PBV TTM', 0)) if row.get('Industry PBV TTM') else None,
+                            price_to_book_adjusted=self._safe_float(row.get('PBV Adjusted', 0)) if row.get('PBV Adjusted') else None,
                             ev_per_ebitda_ann=self._safe_float(row.get('EV Per EBITDA Ann ', 0)) if row.get('EV Per EBITDA Ann ') else None,
+                            price_to_sales_ann=self._safe_float(row.get('Price To Sales Ann ', 0)) if row.get('Price To Sales Ann ') else None,
+                            price_to_sales_ttm=self._safe_float(row.get('Price to Sales TTM', 0)) if row.get('Price to Sales TTM') else None,
                             
                             # Trendlyne Scores
                             durability_score=durability_score,
                             valuation_score=valuation_score,
-                            
-                            # Quality Scores (Academic/Research-based)
-                            piotroski_score=self._safe_int(row.get('Piotroski Score', 0)) if row.get('Piotroski Score') else None,
-                            altman_zscore=self._safe_float(row.get('Altman Zscore', 0)) if row.get('Altman Zscore') else None,
-                            tobin_q_ratio=self._safe_float(row.get('Tobin Q Ratio', 0)) if row.get('Tobin Q Ratio') else None,
-                            graham_number=self._safe_float(row.get('Graham No ', 0)) if row.get('Graham No ') else None,
-                            
-                            # Additional Metrics
-                            eps_qtr_yoy_growth=self._safe_float(row.get('EPS Qtr YoY Growth %', 0)),
-                            basic_eps_qoq_growth=self._safe_float(row.get('Basic EPS QoQ Growth %', 0)),
-                            npm_ann=self._safe_float(row.get('NPM Ann  %', 0)),
-                            npm_ttm=self._safe_float(row.get('NPM TTM %', 0)),
-                            
-                            # Quarterly Data
-                            basic_eps_qtr=self._safe_float(row.get('Basic EPS Qtr', 0)),
-                            basic_eps_1q_ago=self._safe_float(row.get('Basic EPS 1Q Ago', 0)),
-                            basic_eps_2q_ago=self._safe_float(row.get('Basic EPS 2Q Ago', 0)),
-                            net_profit_qtr=self._safe_float(row.get('Net Profit Qtr', 0)),
-                            net_profit_1q_ago=self._safe_float(row.get('Net Profit 1Q Ago', 0)),
-                            net_profit_2q_ago=self._safe_float(row.get('Net Profit 2Q Ago', 0)),
-                            opm_qtr=self._safe_float(row.get('Operating Profit Margin Qtr %', 0)),
-                            opm_1q_ago=self._safe_float(row.get('OPM 1Q ago %', 0)),
-                            opm_qtr_4q_ago=self._safe_float(row.get('OPM Qtr 4Qtr ago %', 0)),
-                            
-                            # Promoter Holding Trends
-                            promoter_holding_change_qoq=self._safe_float(row.get('Promoter holding change QoQ %', 0)),
-                            promoter_holding_change_2y=self._safe_float(row.get('Promoter holding change 2Y %', 0)),
-                            
-                            # Additional Valuation
-                            sector_pe_ttm=self._safe_float(row.get('Sector PE TTM', 0)) if row.get('Sector PE TTM') else None,
-                            sector_pbv_ttm=self._safe_float(row.get('Sector PBV TTM', 0)) if row.get('Sector PBV TTM') else None,
-                            industry_pbv_ttm=self._safe_float(row.get('Industry PBV TTM', 0)) if row.get('Industry PBV TTM') else None,
-                            
-                            # Additional Quality Metrics
-                            roa_ann=self._safe_float(row.get('RoA Ann  %', 0)),
-                            roa_ann_1y_ago=self._safe_float(row.get('RoA Ann  1Y Ago %', 0)),
-                            roe_1y_ago=self._safe_float(row.get('ROE Ann  1Y Ago %', 0)),
-                            roe_2y_ago=self._safe_float(row.get('ROE Ann  2Y Ago %', 0)),
-                            roe_3y_ago=self._safe_float(row.get('ROE Ann  3Y Ago %', 0)),
-                            roce_3y_avg=self._safe_float(row.get('ROCE Ann  3Y Avg %', 0)),
-                            roce_5y_avg=self._safe_float(row.get('ROCE Ann  5Y Avg %', 0)),
-                            cash_flow_return_on_assets=self._safe_float(row.get('Cash Flow Return on Assets Ann ', 0)),
-                            cash_flow_return_on_assets_1y_ago=self._safe_float(row.get('Cash Flow Return on Assets Ann  1Y ago', 0)),
-                            cash_eps_ann=self._safe_float(row.get('Cash EPS Ann ', 0)),
-                            cash_eps_ann_1y_ago=self._safe_float(row.get('Cash EPS Ann  1Y Ago', 0)),
-                            cash_eps_1y_growth=self._safe_float(row.get('Cash EPS 1Y Growth %', 0)),
-                            working_capital_turnover=self._safe_float(row.get('Working Capital Turnover Ann ', 0)),
-                            book_value=self._safe_float(row.get('Book Value Inc Reval Reserve Ann ', 0)),
-                            price_to_sales_ann=self._safe_float(row.get('Price To Sales Ann ', 0)) if row.get('Price To Sales Ann ') else None,
-                            price_to_sales_ttm=self._safe_float(row.get('Price to Sales TTM', 0)) if row.get('Price to Sales TTM') else None,
-                            price_to_cashflow=self._safe_float(row.get('Price to Cashflow from Operations', 0)) if row.get('Price to Cashflow from Operations') else None,
-                            graham_ratio=self._safe_float(row.get('Graham Ratio', 0)) if row.get('Graham Ratio') else None,
-                            operating_profit_ttm=self._safe_float(row.get('Operating Profit TTM', 0)),
-                            operating_profit_ttm_1y_ago=self._safe_float(row.get('Operating Profit TTM 1Y Ago', 0)),
-                            operating_profit_growth_qtr_yoy=self._safe_float(row.get('Operating Profit Growth Qtr YoY %', 0)),
-                            ebitda_ann=self._safe_float(row.get('EBITDA Ann ', 0)),
-                            ebitda_ttm=self._safe_float(row.get('EBITDA TTM', 0)),
-                            ebitda_ann_margin=self._safe_float(row.get('EBITDA Ann  margin %', 0)),
-                            ebit_ann_margin=self._safe_float(row.get('EBIT Ann  Margin %', 0)),
-                            ebitda_qtr_yoy_growth=self._safe_float(row.get('EBITDA Qtr YoY Growth %', 0)),
-                            promoter_pledge_percentage=self._safe_float(row.get('Promoter holding pledge percentage % Qtr', 0)),
-                            gross_npa_ratio=self._safe_float(row.get('Gross NPA ratio Qtr %', 0)) if row.get('Gross NPA ratio Qtr %') else None,
-                            capital_adequacy_ratio=self._safe_float(row.get('Capital Adequacy Ratios Ann  %', 0)) if row.get('Capital Adequacy Ratios Ann  %') else None,
                             industry_score=self._safe_int(row.get('Industry Score', 0)) if row.get('Industry Score') else None,
                             sector_score=self._safe_int(row.get('Sector Score', 0)) if row.get('Sector Score') else None,
-                            tl_checklist_positive_score=self._safe_int(row.get('TL Checklist Positive Score', 0)) if row.get('TL Checklist Positive Score') else None,
-                            tl_checklist_negative_score=self._safe_int(row.get('TL Checklist Negative Score', 0)) if row.get('TL Checklist Negative Score') else None,
+                            
+                            # Quality Scores
+                            piotroski_score=self._safe_int(row.get('Piotroski Score', 0)) if row.get('Piotroski Score') else None,
+                            altman_zscore=self._safe_float(row.get('Altman Zscore', 0)) if row.get('Altman Zscore') else None,
+                            
+                            # Promoter Metrics
+                            promoter_pledge_percentage=self._safe_float(row.get('Promoter holding pledge percentage % Qtr', 0)),
+                            
+                            # Sector/Industry Metrics
+                            sector_roce=self._safe_float(row.get('Sector ROCE', 0)) if row.get('Sector ROCE') else None,
+                            industry_roce=self._safe_float(row.get('Industry ROCE', 0)) if row.get('Industry ROCE') else None,
+                            sector_roe=self._safe_float(row.get('Sector ROE', 0)) if row.get('Sector ROE') else None,
+                            industry_roe=self._safe_float(row.get('Industry ROE', 0)) if row.get('Industry ROE') else None,
+                            sector_peg_ttm=self._safe_float(row.get('Sector PEG TTM', 0)) if row.get('Sector PEG TTM') else None,
+                            industry_peg_ttm=self._safe_float(row.get('Industry PEG TTM', 0)) if row.get('Industry PEG TTM') else None,
+                            sector_pbv_ttm=self._safe_float(row.get('Sector PBV TTM', 0)) if row.get('Sector PBV TTM') else None,
+                            industry_pbv_ttm=self._safe_float(row.get('Industry PBV TTM', 0)) if row.get('Industry PBV TTM') else None,
+                            sector_net_profit_growth_qtr_qoq=self._safe_float(row.get('Sector Net Profit Growth Qtr QoQ %', 0)) if row.get('Sector Net Profit Growth Qtr QoQ %') else None,
+                            sector_net_profit_growth_ann_yoy=self._safe_float(row.get('Sector Net Profit Growth Ann  YoY %', 0)) if row.get('Sector Net Profit Growth Ann  YoY %') else None,
+                            industry_net_profit_growth_qtr_qoq=self._safe_float(row.get('Industry Net Profit Growth Qtr QoQ %', 0)) if row.get('Industry Net Profit Growth Qtr QoQ %') else None,
+                            industry_net_profit_growth_ann_yoy=self._safe_float(row.get('Industry Net Profit Growth Ann  YoY %', 0)) if row.get('Industry Net Profit Growth Ann  YoY %') else None,
                             
                             # SWOT Analysis
                             swot_strengths=self._safe_int(row.get('SWOT Strengths', 0)) if row.get('SWOT Strengths') else None,
@@ -359,19 +279,10 @@ class QualityStocksService:
                             swot_opportunities=self._safe_int(row.get('SWOT Opportunities', 0)) if row.get('SWOT Opportunities') else None,
                             swot_threats=self._safe_int(row.get('SWOT Threats', 0)) if row.get('SWOT Threats') else None,
                             
-                            # Additional Sector/Industry Metrics
-                            sector_roce=self._safe_float(row.get('Sector ROCE', 0)) if row.get('Sector ROCE') else None,
-                            industry_roce=self._safe_float(row.get('Industry ROCE', 0)) if row.get('Industry ROCE') else None,
-                            sector_roe=self._safe_float(row.get('Sector ROE', 0)) if row.get('Sector ROE') else None,
-                            industry_roe=self._safe_float(row.get('Industry ROE', 0)) if row.get('Industry ROE') else None,
-                            sector_peg_ttm=self._safe_float(row.get('Sector PEG TTM', 0)) if row.get('Sector PEG TTM') else None,
-                            industry_peg_ttm=self._safe_float(row.get('Industry PEG TTM', 0)) if row.get('Industry PEG TTM') else None,
-                            sector_net_profit_growth_qtr_qoq=self._safe_float(row.get('Sector Net Profit Growth Qtr QoQ %', 0)) if row.get('Sector Net Profit Growth Qtr QoQ %') else None,
-                            sector_net_profit_growth_ann_yoy=self._safe_float(row.get('Sector Net Profit Growth Ann  YoY %', 0)) if row.get('Sector Net Profit Growth Ann  YoY %') else None,
-                            industry_net_profit_growth_qtr_qoq=self._safe_float(row.get('Industry Net Profit Growth Qtr QoQ %', 0)) if row.get('Industry Net Profit Growth Qtr QoQ %') else None,
-                            industry_net_profit_growth_ann_yoy=self._safe_float(row.get('Industry Net Profit Growth Ann  YoY %', 0)) if row.get('Industry Net Profit Growth Ann  YoY %') else None,
-                            price_to_book_adjusted=self._safe_float(row.get('PBV Adjusted', 0)) if row.get('PBV Adjusted') else None,
+                            # Forward Estimates
                             fc_est_1q_forward_ebit_qtr=self._safe_float(row.get('FC Est  1Q forward EBIT Qtr', 0)) if row.get('FC Est  1Q forward EBIT Qtr') else None,
+                            fc_est_1q_fwd_cash_eps_qtr=self._safe_float(row.get('FC Est  1Q fwd Cash EPS Qtr', 0)) if row.get('FC Est  1Q fwd Cash EPS Qtr') else None,
+                            fc_est_1q_fwd_interest_expense_qtr=self._safe_float(row.get('FC Est  1Q fwd Interest Expense Qtr', 0)) if row.get('FC Est  1Q fwd Interest Expense Qtr') else None,
                             )
                             
                             # Calculate additional insights
@@ -487,8 +398,8 @@ class QualityStocksService:
             score += 3
         elif stock.promoter_holding > 20:
             score += 1
-        # Bonus for increasing promoter holding
-        if stock.promoter_holding_change_1y > 0:
+        # Bonus for increasing promoter holding (using QoQ change instead of 1Y)
+        if stock.promoter_holding_change_qoq > 0:
             score += 2
         max_score += 7
         
@@ -503,35 +414,25 @@ class QualityStocksService:
             score += 2
         max_score += 10
         
-        # 8. Revenue Growth (0-10 points)
-        if stock.operating_rev_growth_ttm > 20:
-            score += 10
-        elif stock.operating_rev_growth_ttm > 15:
-            score += 8
-        elif stock.operating_rev_growth_ttm > 10:
-            score += 5
-        elif stock.operating_rev_growth_ttm > 5:
-            score += 2
-        max_score += 10
+        # 8. Revenue Growth - REMOVED (operating_rev_growth_ttm not in CSV)
+        # Using net profit growth metrics instead
+        max_score += 0
         
-        # 9. Profit Growth Consistency (0-8 points)
-        if stock.net_profit_ann > 0 and stock.net_profit_ann_1y_ago > 0:
-            profit_growth = ((stock.net_profit_ann - stock.net_profit_ann_1y_ago) / 
-                           abs(stock.net_profit_ann_1y_ago)) * 100
-            if profit_growth > 20:
-                score += 8
-            elif profit_growth > 10:
-                score += 5
-            elif profit_growth > 0:
-                score += 2
+        # 9. Profit Growth Consistency (0-8 points) - Using 3Y and 5Y growth from CSV
+        if stock.net_profit_3y_growth > 20:
+            score += 8
+        elif stock.net_profit_3y_growth > 10:
+            score += 5
+        elif stock.net_profit_3y_growth > 0:
+            score += 2
         max_score += 8
         
-        # 10. Operating Margin Trend (0-5 points)
-        if stock.opm_ann > stock.opm_ann_1y_ago and stock.opm_ann > 15:
+        # 10. Operating Margin Trend (0-5 points) - Using OPM Ann only (no 1Y ago in CSV)
+        if stock.opm_ann > 15:
             score += 5
-        elif stock.opm_ann > stock.opm_ann_1y_ago:
-            score += 3
         elif stock.opm_ann > 10:
+            score += 3
+        elif stock.opm_ann > 5:
             score += 1
         max_score += 5
         
@@ -554,24 +455,8 @@ class QualityStocksService:
             score += 2
         max_score += 8
         
-        # 13. PE vs Industry PE (0-5 points) - Prefer lower or similar
-        if stock.pe_ttm and stock.industry_pe_ttm and stock.industry_pe_ttm > 0:
-            pe_ratio = stock.pe_ttm / stock.industry_pe_ttm
-            if pe_ratio < 0.9:  # Lower than industry
-                score += 5
-            elif pe_ratio <= 1.1:  # Similar to industry
-                score += 3
-            elif pe_ratio <= 1.3:  # Slightly higher
-                score += 1
-        elif stock.sector_pe_ttm and stock.sector_pe_ttm > 0:
-            # Use sector PE as fallback
-            if stock.pe_ttm:
-                pe_ratio = stock.pe_ttm / stock.sector_pe_ttm
-                if pe_ratio < 0.9:
-                    score += 4
-                elif pe_ratio <= 1.1:
-                    score += 2
-        max_score += 5
+        # 13. PE vs Industry PE - REMOVED (pe_ttm and industry_pe_ttm not in CSV)
+        max_score += 0
         
         # 14. Price to Book (0-5 points) - Sector dependent, lower is generally better
         if stock.price_to_book:
@@ -650,94 +535,28 @@ class QualityStocksService:
             # Below 1.8 is distress zone - 0 points
         max_score += 6
         
-        # 22. Tobin Q Ratio (0-5 points) - Market vs Book value
-        if stock.tobin_q_ratio:
-            if 0.8 <= stock.tobin_q_ratio <= 1.2:  # Fairly valued
-                score += 5
-            elif 0.6 <= stock.tobin_q_ratio < 0.8:  # Undervalued
-                score += 4
-            elif 1.2 < stock.tobin_q_ratio <= 1.5:  # Slightly overvalued
-                score += 2
-            elif stock.tobin_q_ratio > 1.5:  # Overvalued
-                score += 1
-            # Very low (< 0.6) might indicate distress - 0 points
-        max_score += 5
+        # 22. Tobin Q Ratio - REMOVED (not in CSV)
+        max_score += 0
         
-        # 23. Graham Number (0-4 points) - Intrinsic value indicator
-        if stock.graham_number and stock.market_cap > 0:
-            # Compare market cap to Graham number (lower market cap = better)
-            # This is a simplified check - ideally compare to current price
-            # Higher Graham number relative to market cap suggests undervaluation
-            if stock.graham_number > 0:
-                # If Graham number is significantly positive, it's a good sign
-                # We'll give points based on presence and reasonableness
-                score += 2  # Base points for having a Graham number
-                # Additional points if it suggests good fundamentals
-                if stock.graham_number > stock.market_cap * 0.5:
-                    score += 2  # Suggests reasonable valuation
-        max_score += 4
+        # 23. Graham Number - REMOVED (not in CSV)
+        max_score += 0
         
-        # 24. ROA (Return on Assets) (0-5 points) - Asset efficiency
-        if stock.roa_ann > 10:
-            score += 5
-        elif stock.roa_ann > 7:
-            score += 4
-        elif stock.roa_ann > 5:
-            score += 3
-        elif stock.roa_ann > 3:
-            score += 1
-        # Bonus for improving ROA
-        if stock.roa_ann > stock.roa_ann_1y_ago and stock.roa_ann > 5:
-            score += 1
-        max_score += 6
+        # 24. ROA - REMOVED (not in CSV)
+        max_score += 0
         
-        # 25. Cash Flow Quality (0-5 points) - Cash generation ability
-        if stock.cash_flow_return_on_assets > 10:
-            score += 5
-        elif stock.cash_flow_return_on_assets > 7:
-            score += 4
-        elif stock.cash_flow_return_on_assets > 5:
-            score += 3
-        elif stock.cash_flow_return_on_assets > 0:
-            score += 1
-        # Bonus for improving cash flow
+        # 25. Cash Flow Quality - Using calculated field only
         if stock.cash_flow_quality == "Improving":
             score += 1
-        max_score += 6
+        max_score += 1
         
-        # 26. Cash EPS Growth (0-4 points) - Quality earnings indicator
-        if stock.cash_eps_1y_growth > 20:
-            score += 4
-        elif stock.cash_eps_1y_growth > 10:
-            score += 3
-        elif stock.cash_eps_1y_growth > 5:
-            score += 2
-        elif stock.cash_eps_1y_growth > 0:
-            score += 1
-        max_score += 4
+        # 26. Cash EPS Growth - REMOVED (not in CSV)
+        max_score += 0
         
-        # 27. Working Capital Efficiency (0-3 points)
-        if stock.working_capital_turnover > 10:
-            score += 3
-        elif stock.working_capital_turnover > 5:
-            score += 2
-        elif stock.working_capital_turnover > 2:
-            score += 1
-        max_score += 3
+        # 27. Working Capital Efficiency - REMOVED (not in CSV)
+        max_score += 0
         
-        # 28. Operating Profit TTM Growth (0-4 points) - Better than annual
-        if stock.operating_profit_ttm > 0 and stock.operating_profit_ttm_1y_ago > 0:
-            op_profit_growth = ((stock.operating_profit_ttm - stock.operating_profit_ttm_1y_ago) / 
-                               abs(stock.operating_profit_ttm_1y_ago)) * 100
-            if op_profit_growth > 20:
-                score += 4
-            elif op_profit_growth > 10:
-                score += 3
-            elif op_profit_growth > 5:
-                score += 2
-            elif op_profit_growth > 0:
-                score += 1
-        max_score += 4
+        # 28. Operating Profit TTM Growth - REMOVED (not in CSV)
+        max_score += 0
         
         # 29. EBITDA Quality (0-4 points) - Operational efficiency
         if stock.ebitda_ann_margin > 25:
@@ -810,26 +629,11 @@ class QualityStocksService:
         max_score += 3
         
         # 36. TL Checklist (0-2 points) - Quality checklist
-        if stock.tl_checklist_positive_score and stock.tl_checklist_negative_score:
-            net_score = stock.tl_checklist_positive_score - stock.tl_checklist_negative_score
-            if net_score > 10:
-                score += 2
-            elif net_score > 5:
-                score += 1
-        max_score += 2
+        # Trendlyne Checklist Score - REMOVED (not in CSV)
+        max_score += 0
         
-        # 37. Bank-specific metrics (0-3 points) - For financial stocks
-        if stock.gross_npa_ratio is not None:
-            # Lower NPA is better
-            if stock.gross_npa_ratio < 1.0:
-                score += 2
-            elif stock.gross_npa_ratio < 2.0:
-                score += 1
-        if stock.capital_adequacy_ratio:
-            # Higher is better (should be > 10%)
-            if stock.capital_adequacy_ratio > 15:
-                score += 1
-        max_score += 3
+        # 37. Bank-specific metrics - REMOVED (gross_npa_ratio and capital_adequacy_ratio not in CSV)
+        max_score += 0
         
         # Normalize to 0-100 scale
         if max_score > 0:

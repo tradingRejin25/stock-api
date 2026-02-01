@@ -13,11 +13,12 @@ quality_service = QualityStocksService()
 
 
 class StockResponse(BaseModel):
-    """Response model for a single stock"""
+    """Response model for a single stock - ONLY fields that exist in CSV"""
+    # Basic Information
     stockName: str
     nseCode: str
+    bseCode: str
     isin: str
-    marketCap: float
     
     # Core Quality Metrics
     roe: float
@@ -25,87 +26,61 @@ class StockResponse(BaseModel):
     debtToEquity: float
     interestCoverage: float
     currentRatio: float
+    currentRatioTtm: float
     promoterHolding: float
-    promoterHoldingChange1Y: float
+    promoterHoldingChangeQoq: float
     
     # Growth Metrics
     epsTtmGrowth: float
-    operatingRevGrowthTtm: float
-    netProfitAnn: float
-    netProfitAnn1YAgo: float
-    profitGrowthYoY: float
-    opmAnn: float
-    opmAnn1YAgo: float
-    opmTrend: str
+    epsQtrYoYGrowth: float
+    basicEpsQoqGrowth: float
     basicEpsTtm: float
-    basicEpsTtm1YAgo: float
+    netProfit3YGrowth: float
+    netProfit5YGrowth: float
+    netProfitQoqGrowth: float
+    
+    # Profitability Metrics
+    opmAnn: float
+    opmTtm: float
+    npmTtm: float
+    ebitdaAnn: float
+    ebitdaTtm: float
+    ebitdaAnnMargin: float
     
     # Valuation Metrics
-    peTtm: Optional[float]
-    industryPeTtm: Optional[float]
-    peVsIndustry: Optional[str]
     pegTtm: Optional[float]
     priceToBook: Optional[float]
+    priceToBookAdjusted: Optional[float]
     evPerEbitdaAnn: Optional[float]
+    priceToSalesAnn: Optional[float]
+    priceToSalesTtm: Optional[float]
     
     # Trendlyne Scores
     durabilityScore: Optional[int]
     valuationScore: Optional[int]
-    
-    # Quality Scores (Academic/Research-based)
-    piotroskiScore: Optional[int]
-    altmanZscore: Optional[float]
-    tobinQRatio: Optional[float]
-    grahamNumber: Optional[float]
-    
-    # Additional Metrics
-    epsQtrYoYGrowth: float
-    basicEpsQoqGrowth: float
-    npmAnn: float
-    npmTtm: float
-    
-    # Quality Metrics
-    qualityScore: float
-    qualityTier: str
-    
-    # Enhanced Insights
-    consecutivePositiveQuarters: int
-    profitGrowthConsistency: str
-    marginStability: str
-    promoterTrend: str
-    cashFlowQuality: str
-    roeTrend: str
-    roceConsistency: str
-    
-    # Additional Valuation Metrics
-    sectorPeTtm: Optional[float]
-    sectorPbvTtm: Optional[float]
-    industryPbvTtm: Optional[float]
-    
-    # Additional Quality Metrics
-    roaAnn: float
-    cashFlowReturnOnAssets: float
-    cashEpsAnn: float
-    cashEps1YGrowth: float
-    workingCapitalTurnover: float
-    bookValue: float
-    priceToSalesTtm: Optional[float]
-    priceToCashflow: Optional[float]
-    operatingProfitTtm: float
-    operatingProfitTtm1YAgo: float
-    operatingProfitGrowthQtrYoY: float
-    ebitdaAnn: float
-    ebitdaTtm: float
-    ebitdaAnnMargin: float
-    ebitAnnMargin: float
-    ebitdaQtrYoYGrowth: float
-    promoterPledgePercentage: float
-    grossNpaRatio: Optional[float]
-    capitalAdequacyRatio: Optional[float]
     industryScore: Optional[int]
     sectorScore: Optional[int]
-    tlChecklistPositiveScore: Optional[int]
-    tlChecklistNegativeScore: Optional[int]
+    
+    # Quality Scores
+    piotroskiScore: Optional[int]
+    altmanZscore: Optional[float]
+    
+    # Promoter Metrics
+    promoterPledgePercentage: float
+    
+    # Sector/Industry Metrics
+    sectorRoce: Optional[float]
+    industryRoce: Optional[float]
+    sectorRoe: Optional[float]
+    industryRoe: Optional[float]
+    sectorPegTtm: Optional[float]
+    industryPegTtm: Optional[float]
+    sectorPbvTtm: Optional[float]
+    industryPbvTtm: Optional[float]
+    sectorNetProfitGrowthQtrQoq: Optional[float]
+    sectorNetProfitGrowthAnnYoy: Optional[float]
+    industryNetProfitGrowthQtrQoq: Optional[float]
+    industryNetProfitGrowthAnnYoy: Optional[float]
     
     # SWOT Analysis
     swotStrengths: Optional[int]
@@ -113,19 +88,21 @@ class StockResponse(BaseModel):
     swotOpportunities: Optional[int]
     swotThreats: Optional[int]
     
-    # Additional Sector/Industry Metrics
-    sectorRoce: Optional[float]
-    industryRoce: Optional[float]
-    sectorRoe: Optional[float]
-    industryRoe: Optional[float]
-    sectorPegTtm: Optional[float]
-    industryPegTtm: Optional[float]
-    sectorNetProfitGrowthQtrQoq: Optional[float]
-    sectorNetProfitGrowthAnnYoy: Optional[float]
-    industryNetProfitGrowthQtrQoq: Optional[float]
-    industryNetProfitGrowthAnnYoy: Optional[float]
-    priceToBookAdjusted: Optional[float]
+    # Forward Estimates
     fcEst1QForwardEbitQtr: Optional[float]
+    fcEst1QFwdCashEpsQtr: Optional[float]
+    fcEst1QFwdInterestExpenseQtr: Optional[float]
+    
+    # Calculated/Computed Fields (NOT from CSV - these are OK)
+    qualityScore: float
+    qualityTier: str
+    consecutivePositiveQuarters: int
+    profitGrowthConsistency: str
+    marginStability: str
+    promoterTrend: str
+    cashFlowQuality: str
+    roeTrend: str
+    roceConsistency: str
     
     class Config:
         from_attributes = True
@@ -139,68 +116,88 @@ class QualityStocksResponse(BaseModel):
 
 
 def _stock_to_response(stock: QualityStock) -> StockResponse:
-    """Convert QualityStock to StockResponse"""
-    # Calculate profit growth YoY
-    profit_growth_yoy = 0.0
-    if stock.net_profit_ann_1y_ago and stock.net_profit_ann_1y_ago != 0:
-        profit_growth_yoy = ((stock.net_profit_ann - stock.net_profit_ann_1y_ago) / 
-                           abs(stock.net_profit_ann_1y_ago)) * 100
-    
-    # Determine OPM trend
-    opm_trend = "Stable"
-    if stock.opm_ann > stock.opm_ann_1y_ago:
-        opm_trend = "Expanding"
-    elif stock.opm_ann < stock.opm_ann_1y_ago:
-        opm_trend = "Contracting"
-    
-    # PE vs Industry comparison
-    pe_vs_industry = None
-    if stock.pe_ttm and stock.industry_pe_ttm and stock.industry_pe_ttm > 0:
-        if stock.pe_ttm < stock.industry_pe_ttm * 0.9:
-            pe_vs_industry = "Lower"
-        elif stock.pe_ttm > stock.industry_pe_ttm * 1.1:
-            pe_vs_industry = "Higher"
-        else:
-            pe_vs_industry = "Similar"
-    
+    """Convert QualityStock to StockResponse - ONLY fields that exist in CSV"""
     return StockResponse(
+        # Basic Information
         stockName=stock.stock_name,
         nseCode=stock.nse_code,
+        bseCode=stock.bse_code,
         isin=stock.isin,
-        marketCap=stock.market_cap,
+        
+        # Core Quality Metrics
         roe=stock.roe,
         roce=stock.roce,
         debtToEquity=stock.debt_to_equity,
         interestCoverage=stock.interest_coverage,
         currentRatio=stock.current_ratio,
+        currentRatioTtm=stock.current_ratio_ttm,
         promoterHolding=stock.promoter_holding,
-        promoterHoldingChange1Y=stock.promoter_holding_change_1y,
+        promoterHoldingChangeQoq=stock.promoter_holding_change_qoq,
+        
+        # Growth Metrics
         epsTtmGrowth=stock.eps_ttm_growth,
-        operatingRevGrowthTtm=stock.operating_rev_growth_ttm,
-        netProfitAnn=stock.net_profit_ann,
-        netProfitAnn1YAgo=stock.net_profit_ann_1y_ago,
-        profitGrowthYoY=round(profit_growth_yoy, 2),
-        opmAnn=stock.opm_ann,
-        opmAnn1YAgo=stock.opm_ann_1y_ago,
-        opmTrend=opm_trend,
-        basicEpsTtm=stock.basic_eps_ttm,
-        basicEpsTtm1YAgo=stock.basic_eps_ttm_1y_ago,
-        peTtm=stock.pe_ttm,
-        industryPeTtm=stock.industry_pe_ttm,
-        peVsIndustry=pe_vs_industry,
-        pegTtm=stock.peg_ttm,
-        priceToBook=stock.price_to_book,
-        evPerEbitdaAnn=stock.ev_per_ebitda_ann,
-        durabilityScore=stock.durability_score,
-        valuationScore=stock.valuation_score,
-        piotroskiScore=stock.piotroski_score,
-        altmanZscore=stock.altman_zscore,
-        tobinQRatio=stock.tobin_q_ratio,
-        grahamNumber=stock.graham_number,
         epsQtrYoYGrowth=stock.eps_qtr_yoy_growth,
         basicEpsQoqGrowth=stock.basic_eps_qoq_growth,
-        npmAnn=stock.npm_ann,
+        basicEpsTtm=stock.basic_eps_ttm,
+        netProfit3YGrowth=stock.net_profit_3y_growth,
+        netProfit5YGrowth=stock.net_profit_5y_growth,
+        netProfitQoqGrowth=stock.net_profit_qoq_growth,
+        
+        # Profitability Metrics
+        opmAnn=stock.opm_ann,
+        opmTtm=stock.opm_ttm,
         npmTtm=stock.npm_ttm,
+        ebitdaAnn=stock.ebitda_ann,
+        ebitdaTtm=stock.ebitda_ttm,
+        ebitdaAnnMargin=stock.ebitda_ann_margin,
+        
+        # Valuation Metrics
+        pegTtm=stock.peg_ttm,
+        priceToBook=stock.price_to_book,
+        priceToBookAdjusted=stock.price_to_book_adjusted,
+        evPerEbitdaAnn=stock.ev_per_ebitda_ann,
+        priceToSalesAnn=stock.price_to_sales_ann,
+        priceToSalesTtm=stock.price_to_sales_ttm,
+        
+        # Trendlyne Scores
+        durabilityScore=stock.durability_score,
+        valuationScore=stock.valuation_score,
+        industryScore=stock.industry_score,
+        sectorScore=stock.sector_score,
+        
+        # Quality Scores
+        piotroskiScore=stock.piotroski_score,
+        altmanZscore=stock.altman_zscore,
+        
+        # Promoter Metrics
+        promoterPledgePercentage=stock.promoter_pledge_percentage,
+        
+        # Sector/Industry Metrics
+        sectorRoce=stock.sector_roce,
+        industryRoce=stock.industry_roce,
+        sectorRoe=stock.sector_roe,
+        industryRoe=stock.industry_roe,
+        sectorPegTtm=stock.sector_peg_ttm,
+        industryPegTtm=stock.industry_peg_ttm,
+        sectorPbvTtm=stock.sector_pbv_ttm,
+        industryPbvTtm=stock.industry_pbv_ttm,
+        sectorNetProfitGrowthQtrQoq=stock.sector_net_profit_growth_qtr_qoq,
+        sectorNetProfitGrowthAnnYoy=stock.sector_net_profit_growth_ann_yoy,
+        industryNetProfitGrowthQtrQoq=stock.industry_net_profit_growth_qtr_qoq,
+        industryNetProfitGrowthAnnYoy=stock.industry_net_profit_growth_ann_yoy,
+        
+        # SWOT Analysis
+        swotStrengths=stock.swot_strengths,
+        swotWeakness=stock.swot_weakness,
+        swotOpportunities=stock.swot_opportunities,
+        swotThreats=stock.swot_threats,
+        
+        # Forward Estimates
+        fcEst1QForwardEbitQtr=stock.fc_est_1q_forward_ebit_qtr,
+        fcEst1QFwdCashEpsQtr=stock.fc_est_1q_fwd_cash_eps_qtr,
+        fcEst1QFwdInterestExpenseQtr=stock.fc_est_1q_fwd_interest_expense_qtr,
+        
+        # Calculated/Computed Fields
         qualityScore=stock.quality_score,
         qualityTier=stock.quality_tier,
         consecutivePositiveQuarters=stock.consecutive_positive_quarters,
@@ -210,48 +207,6 @@ def _stock_to_response(stock: QualityStock) -> StockResponse:
         cashFlowQuality=stock.cash_flow_quality,
         roeTrend=stock.roe_trend,
         roceConsistency=stock.roce_consistency,
-        sectorPeTtm=stock.sector_pe_ttm,
-        sectorPbvTtm=stock.sector_pbv_ttm,
-        industryPbvTtm=stock.industry_pbv_ttm,
-        roaAnn=stock.roa_ann,
-        cashFlowReturnOnAssets=stock.cash_flow_return_on_assets,
-        cashEpsAnn=stock.cash_eps_ann,
-        cashEps1YGrowth=stock.cash_eps_1y_growth,
-        workingCapitalTurnover=stock.working_capital_turnover,
-        bookValue=stock.book_value,
-        priceToSalesTtm=stock.price_to_sales_ttm,
-        priceToCashflow=stock.price_to_cashflow,
-        operatingProfitTtm=stock.operating_profit_ttm,
-        operatingProfitTtm1YAgo=stock.operating_profit_ttm_1y_ago,
-        operatingProfitGrowthQtrYoY=stock.operating_profit_growth_qtr_yoy,
-        ebitdaAnn=stock.ebitda_ann,
-        ebitdaTtm=stock.ebitda_ttm,
-        ebitdaAnnMargin=stock.ebitda_ann_margin,
-        ebitAnnMargin=stock.ebit_ann_margin,
-        ebitdaQtrYoYGrowth=stock.ebitda_qtr_yoy_growth,
-        promoterPledgePercentage=stock.promoter_pledge_percentage,
-        grossNpaRatio=stock.gross_npa_ratio,
-        capitalAdequacyRatio=stock.capital_adequacy_ratio,
-        industryScore=stock.industry_score,
-        sectorScore=stock.sector_score,
-        tlChecklistPositiveScore=stock.tl_checklist_positive_score,
-        tlChecklistNegativeScore=stock.tl_checklist_negative_score,
-        swotStrengths=stock.swot_strengths,
-        swotWeakness=stock.swot_weakness,
-        swotOpportunities=stock.swot_opportunities,
-        swotThreats=stock.swot_threats,
-        sectorRoce=stock.sector_roce,
-        industryRoce=stock.industry_roce,
-        sectorRoe=stock.sector_roe,
-        industryRoe=stock.industry_roe,
-        sectorPegTtm=stock.sector_peg_ttm,
-        industryPegTtm=stock.industry_peg_ttm,
-        sectorNetProfitGrowthQtrQoq=stock.sector_net_profit_growth_qtr_qoq,
-        sectorNetProfitGrowthAnnYoy=stock.sector_net_profit_growth_ann_yoy,
-        industryNetProfitGrowthQtrQoq=stock.industry_net_profit_growth_qtr_qoq,
-        industryNetProfitGrowthAnnYoy=stock.industry_net_profit_growth_ann_yoy,
-        priceToBookAdjusted=stock.price_to_book_adjusted,
-        fcEst1QForwardEbitQtr=stock.fc_est_1q_forward_ebit_qtr,
     )
 
 
@@ -349,17 +304,17 @@ async def get_all_quality_stocks():
                 count=len(great),
                 tier="Great",
                 stocks=[_stock_to_response(stock) for stock in great]
-            ).dict(),
+            ).model_dump(),
             "aggressive": QualityStocksResponse(
                 count=len(aggressive),
                 tier="Aggressive",
                 stocks=[_stock_to_response(stock) for stock in aggressive]
-            ).dict(),
+            ).model_dump(),
             "good": QualityStocksResponse(
                 count=len(good),
                 tier="Good",
                 stocks=[_stock_to_response(stock) for stock in good]
-            ).dict(),
+            ).model_dump(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching all quality stocks: {str(e)}")
