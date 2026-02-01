@@ -14,18 +14,41 @@ router = APIRouter(prefix="/api/trendlyne-quality", tags=["Trendlyne Quality Sto
 
 
 def _get_value_from_data(data: Dict[str, Any], excel_field: str, default: Any = None) -> Any:
-    """Get value from data dict using Excel field name"""
-    return data.get(excel_field, default)
+    """Get value from data dict using Excel field name - tries exact match and variations"""
+    # Try exact match first
+    if excel_field in data:
+        return data[excel_field]
+    
+    # Try without trailing spaces
+    field_no_trailing = excel_field.rstrip()
+    if field_no_trailing in data:
+        return data[field_no_trailing]
+    
+    # Try with different spacing variations
+    variations = [
+        excel_field.replace('  ', ' '),  # Double space to single
+        excel_field.strip(),  # All whitespace removed
+    ]
+    
+    for var in variations:
+        if var in data:
+            return data[var]
+    
+    return default
 
 
-def _safe_float(value: Any, default: float = 0.0) -> float:
-    """Safely convert value to float"""
+def _safe_float(value: Any, default: Optional[float] = 0.0) -> Optional[float]:
+    """Safely convert value to float - returns None if value is missing/invalid and default is None"""
     if value is None or value == '' or value == '-':
         return default
     try:
         if isinstance(value, str):
             value = value.replace(',', '').strip()
-        return float(value)
+            # If string is empty after stripping, return default
+            if not value or value.lower() in ['n/a', 'na', 'none', 'null']:
+                return default
+        result = float(value)
+        return result
     except (ValueError, TypeError):
         return default
 
@@ -51,31 +74,31 @@ class QualityFilteredStockResponse(BaseModel):
     isin: Optional[str]
     
     # Core Quality Metrics (mapped from Excel fields)
-    roe: float
-    roce: float
-    debtToEquity: float
-    interestCoverage: float
-    currentRatio: float
-    currentRatioTtm: float
-    promoterHolding: float
-    promoterHoldingChangeQoq: float
+    roe: Optional[float]
+    roce: Optional[float]
+    debtToEquity: Optional[float]
+    interestCoverage: Optional[float]
+    currentRatio: Optional[float]
+    currentRatioTtm: Optional[float]
+    promoterHolding: Optional[float]
+    promoterHoldingChangeQoq: Optional[float]
     
     # Growth Metrics
-    epsTtmGrowth: float
-    epsQtrYoYGrowth: float
-    basicEpsQoqGrowth: float
-    basicEpsTtm: float
-    netProfit3YGrowth: float
-    netProfit5YGrowth: float
-    netProfitQoqGrowth: float
+    epsTtmGrowth: Optional[float]
+    epsQtrYoYGrowth: Optional[float]
+    basicEpsQoqGrowth: Optional[float]
+    basicEpsTtm: Optional[float]
+    netProfit3YGrowth: Optional[float]
+    netProfit5YGrowth: Optional[float]
+    netProfitQoqGrowth: Optional[float]
     
     # Profitability Metrics
-    opmAnn: float
-    opmTtm: float
-    npmTtm: float
-    ebitdaAnn: float
-    ebitdaTtm: float
-    ebitdaAnnMargin: float
+    opmAnn: Optional[float]
+    opmTtm: Optional[float]
+    npmTtm: Optional[float]
+    ebitdaAnn: Optional[float]
+    ebitdaTtm: Optional[float]
+    ebitdaAnnMargin: Optional[float]
     
     # Valuation Metrics
     pegTtm: Optional[float]
@@ -96,7 +119,7 @@ class QualityFilteredStockResponse(BaseModel):
     altmanZscore: Optional[float]
     
     # Promoter Metrics
-    promoterPledgePercentage: float
+    promoterPledgePercentage: Optional[float]
     
     # Sector/Industry Metrics
     sectorRoce: Optional[float]
@@ -154,14 +177,14 @@ def _quality_stock_to_response(stock: QualityFilteredStock) -> QualityFilteredSt
         isin=stock.isin,
         
         # Core Quality Metrics (mapped from Excel field names)
-        roe=_safe_float(_get_value_from_data(data, 'ROE Ann  %')),
-        roce=_safe_float(_get_value_from_data(data, 'ROCE Ann  %')),
-        debtToEquity=_safe_float(_get_value_from_data(data, 'Total Debt to Total Equity Ann ')),
-        interestCoverage=_safe_float(_get_value_from_data(data, 'Interest Coverage Ratio Ann ')),
-        currentRatio=_safe_float(_get_value_from_data(data, 'Current Ratio Ann ')),
-        currentRatioTtm=_safe_float(_get_value_from_data(data, 'Current Ratio TTM')),
-        promoterHolding=_safe_float(_get_value_from_data(data, 'Promoter holding latest %')),
-        promoterHoldingChangeQoq=_safe_float(_get_value_from_data(data, 'Promoter holding change QoQ %')),
+        roe=_safe_float(_get_value_from_data(data, 'ROE Ann  %'), None),
+        roce=_safe_float(_get_value_from_data(data, 'ROCE Ann  %'), None),
+        debtToEquity=_safe_float(_get_value_from_data(data, 'Total Debt to Total Equity Ann '), None),
+        interestCoverage=_safe_float(_get_value_from_data(data, 'Interest Coverage Ratio Ann '), None),
+        currentRatio=_safe_float(_get_value_from_data(data, 'Current Ratio Ann '), None),
+        currentRatioTtm=_safe_float(_get_value_from_data(data, 'Current Ratio TTM'), None),
+        promoterHolding=_safe_float(_get_value_from_data(data, 'Promoter holding latest %'), None),
+        promoterHoldingChangeQoq=_safe_float(_get_value_from_data(data, 'Promoter holding change QoQ %'), None),
         
         # Growth Metrics
         epsTtmGrowth=_safe_float(_get_value_from_data(data, 'EPS TTM Growth %')),
@@ -173,12 +196,12 @@ def _quality_stock_to_response(stock: QualityFilteredStock) -> QualityFilteredSt
         netProfitQoqGrowth=_safe_float(_get_value_from_data(data, 'Net Profit QoQ Growth %')),
         
         # Profitability Metrics
-        opmAnn=_safe_float(_get_value_from_data(data, 'OPM Ann  %')),
-        opmTtm=_safe_float(_get_value_from_data(data, 'OPM TTM %')),
-        npmTtm=_safe_float(_get_value_from_data(data, 'NPM TTM %')),
-        ebitdaAnn=_safe_float(_get_value_from_data(data, 'EBITDA Ann ')),
-        ebitdaTtm=_safe_float(_get_value_from_data(data, 'EBITDA TTM')),
-        ebitdaAnnMargin=_safe_float(_get_value_from_data(data, 'EBITDA Ann  Margin %')),
+        opmAnn=_safe_float(_get_value_from_data(data, 'OPM Ann  %'), None),
+        opmTtm=_safe_float(_get_value_from_data(data, 'OPM TTM %'), None),
+        npmTtm=_safe_float(_get_value_from_data(data, 'NPM TTM %'), None),
+        ebitdaAnn=_safe_float(_get_value_from_data(data, 'EBITDA Ann '), None),
+        ebitdaTtm=_safe_float(_get_value_from_data(data, 'EBITDA TTM'), None),
+        ebitdaAnnMargin=_safe_float(_get_value_from_data(data, 'EBITDA Ann  Margin %'), None),
         
         # Valuation Metrics
         pegTtm=_safe_float(_get_value_from_data(data, 'PEG TTM'), None),
