@@ -382,6 +382,40 @@ async def get_stock_by_nse_code(nse_code: str):
         raise HTTPException(status_code=500, detail=f"Error fetching stock: {str(e)}")
 
 
+@router.get("/durability-valuation", response_model=QualityStocksResponse)
+async def get_durability_valuation_stocks(
+    min_durability: int = Query(70, ge=0, le=100, description="Minimum durability score (0-100)"),
+    min_valuation: int = Query(70, ge=0, le=100, description="Minimum valuation score (0-100)")
+):
+    """
+    Get stocks filtered by high durability and valuation scores ONLY.
+    No other criteria are applied - only Trendlyne Durability and Valuation scores.
+    
+    This endpoint is useful for finding stocks with strong business durability
+    and attractive valuation, regardless of other financial metrics.
+    
+    Args:
+        min_durability: Minimum durability score (default: 70)
+        min_valuation: Minimum valuation score (default: 70)
+    
+    Returns:
+        List of stocks meeting the durability and valuation criteria, sorted by combined score
+    """
+    try:
+        stocks = quality_service.filter_by_durability_valuation(
+            min_durability=min_durability,
+            min_valuation=min_valuation
+        )
+        
+        return QualityStocksResponse(
+            count=len(stocks),
+            tier=f"High Durability & Valuation (Durability>={min_durability}, Valuation>={min_valuation})",
+            stocks=[_stock_to_response(stock) for stock in stocks]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching durability-valuation stocks: {str(e)}")
+
+
 @router.get("/search", response_model=List[StockResponse])
 async def search_stocks(
     query: str = Query(..., min_length=1, description="Search by stock name or NSE code"),

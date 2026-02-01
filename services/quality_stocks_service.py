@@ -861,6 +861,47 @@ class QualityStocksService:
         )
         return aggressive_stocks
     
+    def filter_by_durability_valuation(self, min_durability: int = 70, min_valuation: int = 70) -> List[QualityStock]:
+        """
+        Filter stocks based ONLY on high durability and valuation scores.
+        No other criteria are applied - only Trendlyne Durability and Valuation scores.
+        
+        Args:
+            min_durability: Minimum durability score (default: 70)
+            min_valuation: Minimum valuation score (default: 70)
+        
+        Returns:
+            List of stocks meeting the durability and valuation criteria
+        """
+        if not self.stocks:
+            self.load_stocks()
+        
+        # Calculate scores for all stocks
+        for stock in self.stocks:
+            stock.quality_score = self.calculate_quality_score(stock)
+        
+        # Filter based ONLY on durability and valuation scores
+        filtered_stocks = []
+        for stock in self.stocks:
+            # Check ONLY durability and valuation scores
+            meets_criteria = (
+                stock.durability_score is not None and
+                stock.durability_score >= min_durability and
+                stock.valuation_score is not None and
+                stock.valuation_score >= min_valuation
+            )
+            
+            if meets_criteria:
+                stock.quality_tier = "High Durability & Valuation"
+                filtered_stocks.append(stock)
+        
+        # Sort by combined durability + valuation score (descending)
+        filtered_stocks.sort(
+            key=lambda x: (x.durability_score or 0) + (x.valuation_score or 0),
+            reverse=True
+        )
+        return filtered_stocks
+    
     def filter_medium_quality_stocks(self, exclude_great: List[QualityStock] = None, exclude_aggressive: List[QualityStock] = None) -> List[QualityStock]:
         """Filter stocks for medium/good quality (balanced risk-reward) - only significant quality stocks"""
         if not self.stocks:

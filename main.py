@@ -62,6 +62,7 @@ async def root():
             "quality_stocks_aggressive": "/api/quality-stocks/aggressive",
             "quality_stocks_good": "/api/quality-stocks/good",
             "quality_stocks_all": "/api/quality-stocks/all",
+            "quality_stocks_durability_valuation": "/api/quality-stocks/durability-valuation?min_durability=70&min_valuation=70",
             "quality_stocks_search": "/api/quality-stocks/search?query=RELIANCE",
             "quality_stocks_by_nse": "/api/quality-stocks/stock/{nse_code}",
             "docs": "/docs",
