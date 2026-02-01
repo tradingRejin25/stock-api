@@ -203,6 +203,15 @@ class QualityStocksService:
                 
                 for row in reader:
                     try:
+                        # Pre-process durability and valuation scores
+                        durability_score_raw = row.get('Durability Score', '')
+                        durability_score_val = str(durability_score_raw).strip() if durability_score_raw else ''
+                        durability_score = self._safe_int(durability_score_val) if durability_score_val and durability_score_val not in ['', '-', 'N/A', 'NA', '0'] else None
+                        
+                        valuation_score_raw = row.get('Valuation Score', '')
+                        valuation_score_val = str(valuation_score_raw).strip() if valuation_score_raw else ''
+                        valuation_score = self._safe_int(valuation_score_val) if valuation_score_val and valuation_score_val not in ['', '-', 'N/A', 'NA', '0'] else None
+                        
                         stock = QualityStock(
                             stock_name=row.get('Stock', '').strip(),
                             nse_code=row.get('NSE Code', '').strip(),
@@ -238,8 +247,8 @@ class QualityStocksService:
                             ev_per_ebitda_ann=self._safe_float(row.get('EV Per EBITDA Ann ', 0)) if row.get('EV Per EBITDA Ann ') else None,
                             
                             # Trendlyne Scores
-                            durability_score=self._safe_int(row.get('Durability Score', 0)) if row.get('Durability Score') else None,
-                            valuation_score=self._safe_int(row.get('Valuation Score', 0)) if row.get('Valuation Score') else None,
+                            durability_score=durability_score,
+                            valuation_score=valuation_score,
                             
                             # Quality Scores (Academic/Research-based)
                             piotroski_score=self._safe_int(row.get('Piotroski Score', 0)) if row.get('Piotroski Score') else None,
@@ -861,17 +870,87 @@ class QualityStocksService:
         )
         return aggressive_stocks
     
-    def filter_by_durability_valuation(self, min_durability: int = 70, min_valuation: int = 70) -> List[QualityStock]:
+    def get_durability_valuation_stats(self) -> dict:
         """
-        Filter stocks based ONLY on high durability and valuation scores.
-        No other criteria are applied - only Trendlyne Durability and Valuation scores.
-        
-        Args:
-            min_durability: Minimum durability score (default: 70)
-            min_valuation: Minimum valuation score (default: 70)
+        Get statistics about durability and valuation scores in the dataset.
+        Useful for understanding score distribution before filtering.
         
         Returns:
-            List of stocks meeting the durability and valuation criteria
+            Dictionary with statistics about scores
+        """
+        if not self.stocks:
+            self.load_stocks()
+        
+        stocks_with_durability = [s for s in self.stocks if s.durability_score is not None]
+        stocks_with_valuation = [s for s in self.stocks if s.valuation_score is not None]
+        stocks_with_both = [s for s in self.stocks if s.durability_score is not None and s.valuation_score is not None]
+        
+        stats = {
+            "total_stocks": len(self.stocks),
+            "stocks_with_durability_score": len(stocks_with_durability),
+            "stocks_with_valuation_score": len(stocks_with_valuation),
+            "stocks_with_both_scores": len(stocks_with_both),
+        }
+        
+        if stocks_with_durability:
+            durability_scores = [s.durability_score for s in stocks_with_durability]
+            stats["durability"] = {
+                "min": min(durability_scores),
+                "max": max(durability_scores),
+                "avg": round(sum(durability_scores) / len(durability_scores), 2),
+                "median": sorted(durability_scores)[len(durability_scores) // 2],
+            }
+        else:
+            stats["durability"] = None
+        
+        if stocks_with_valuation:
+            valuation_scores = [s.valuation_score for s in stocks_with_valuation]
+            stats["valuation"] = {
+                "min": min(valuation_scores),
+                "max": max(valuation_scores),
+                "avg": round(sum(valuation_scores) / len(valuation_scores), 2),
+                "median": sorted(valuation_scores)[len(valuation_scores) // 2],
+            }
+        else:
+            stats["valuation"] = None
+        
+        # Count by score ranges
+        if stocks_with_both:
+            ranges = {
+                "durability_0_20": sum(1 for s in stocks_with_both if 0 <= s.durability_score < 20),
+                "durability_20_40": sum(1 for s in stocks_with_both if 20 <= s.durability_score < 40),
+                "durability_40_60": sum(1 for s in stocks_with_both if 40 <= s.durability_score < 60),
+                "durability_60_80": sum(1 for s in stocks_with_both if 60 <= s.durability_score < 80),
+                "durability_80_100": sum(1 for s in stocks_with_both if 80 <= s.durability_score <= 100),
+                "valuation_0_20": sum(1 for s in stocks_with_both if 0 <= s.valuation_score < 20),
+                "valuation_20_40": sum(1 for s in stocks_with_both if 20 <= s.valuation_score < 40),
+                "valuation_40_60": sum(1 for s in stocks_with_both if 40 <= s.valuation_score < 60),
+                "valuation_60_80": sum(1 for s in stocks_with_both if 60 <= s.valuation_score < 80),
+                "valuation_80_100": sum(1 for s in stocks_with_both if 80 <= s.valuation_score <= 100),
+            }
+            stats["score_ranges"] = ranges
+        
+        return stats
+    
+    def filter_by_durability_valuation(
+        self, 
+        min_durability: Optional[int] = None,
+        max_durability: Optional[int] = None,
+        min_valuation: Optional[int] = None,
+        max_valuation: Optional[int] = None
+    ) -> List[QualityStock]:
+        """
+        Filter stocks based on durability and valuation scores with flexible criteria.
+        Supports both minimum and maximum thresholds for each score.
+        
+        Args:
+            min_durability: Minimum durability score (None = no minimum)
+            max_durability: Maximum durability score (None = no maximum)
+            min_valuation: Minimum valuation score (None = no minimum)
+            max_valuation: Maximum valuation score (None = no maximum)
+        
+        Returns:
+            List of stocks meeting the criteria
         """
         if not self.stocks:
             self.load_stocks()
@@ -880,18 +959,31 @@ class QualityStocksService:
         for stock in self.stocks:
             stock.quality_score = self.calculate_quality_score(stock)
         
-        # Filter based ONLY on durability and valuation scores
+        # Filter based on durability and valuation scores
         filtered_stocks = []
         for stock in self.stocks:
-            # Check ONLY durability and valuation scores
-            meets_criteria = (
-                stock.durability_score is not None and
-                stock.durability_score >= min_durability and
-                stock.valuation_score is not None and
-                stock.valuation_score >= min_valuation
-            )
+            # Check durability score criteria
+            durability_ok = True
+            if stock.durability_score is None:
+                durability_ok = False
+            else:
+                if min_durability is not None and stock.durability_score < min_durability:
+                    durability_ok = False
+                if max_durability is not None and stock.durability_score > max_durability:
+                    durability_ok = False
             
-            if meets_criteria:
+            # Check valuation score criteria
+            valuation_ok = True
+            if stock.valuation_score is None:
+                valuation_ok = False
+            else:
+                if min_valuation is not None and stock.valuation_score < min_valuation:
+                    valuation_ok = False
+                if max_valuation is not None and stock.valuation_score > max_valuation:
+                    valuation_ok = False
+            
+            # Both criteria must be met
+            if durability_ok and valuation_ok:
                 stock.quality_tier = "High Durability & Valuation"
                 filtered_stocks.append(stock)
         

@@ -382,34 +382,84 @@ async def get_stock_by_nse_code(nse_code: str):
         raise HTTPException(status_code=500, detail=f"Error fetching stock: {str(e)}")
 
 
-@router.get("/durability-valuation", response_model=QualityStocksResponse)
-async def get_durability_valuation_stocks(
-    min_durability: int = Query(70, ge=0, le=100, description="Minimum durability score (0-100)"),
-    min_valuation: int = Query(70, ge=0, le=100, description="Minimum valuation score (0-100)")
-):
+@router.get("/durability-valuation/stats")
+async def get_durability_valuation_stats():
     """
-    Get stocks filtered by high durability and valuation scores ONLY.
-    No other criteria are applied - only Trendlyne Durability and Valuation scores.
-    
-    This endpoint is useful for finding stocks with strong business durability
-    and attractive valuation, regardless of other financial metrics.
-    
-    Args:
-        min_durability: Minimum durability score (default: 70)
-        min_valuation: Minimum valuation score (default: 70)
+    Get statistics about durability and valuation scores in the dataset.
+    Useful for understanding score distribution before filtering.
     
     Returns:
-        List of stocks meeting the durability and valuation criteria, sorted by combined score
+        Dictionary with statistics including min, max, avg, median, and score ranges
     """
     try:
+        stats = quality_service.get_durability_valuation_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching score statistics: {str(e)}")
+
+
+@router.get("/durability-valuation", response_model=QualityStocksResponse)
+async def get_durability_valuation_stocks(
+    min_durability: Optional[int] = Query(None, ge=0, le=100, description="Minimum durability score (0-100)"),
+    max_durability: Optional[int] = Query(None, ge=0, le=100, description="Maximum durability score (0-100)"),
+    min_valuation: Optional[int] = Query(None, ge=0, le=100, description="Minimum valuation score (0-100)"),
+    max_valuation: Optional[int] = Query(None, ge=0, le=100, description="Maximum valuation score (0-100)")
+):
+    """
+    Get stocks filtered by durability and valuation scores with flexible criteria.
+    Supports both minimum and maximum thresholds for each score.
+    
+    This endpoint is useful for finding stocks with specific durability and valuation score ranges.
+    No other criteria are applied - only Trendlyne Durability and Valuation scores.
+    
+    Examples:
+    - Get stocks with durability >= 60 and valuation >= 60:
+      /api/quality-stocks/durability-valuation?min_durability=60&min_valuation=60
+    
+    - Get stocks with durability between 50-80:
+      /api/quality-stocks/durability-valuation?min_durability=50&max_durability=80
+    
+    - Get all stocks with any durability and valuation scores:
+      /api/quality-stocks/durability-valuation
+    
+    Args:
+        min_durability: Minimum durability score (None = no minimum)
+        max_durability: Maximum durability score (None = no maximum)
+        min_valuation: Minimum valuation score (None = no minimum)
+        max_valuation: Maximum valuation score (None = no maximum)
+    
+    Returns:
+        List of stocks meeting the criteria, sorted by combined score
+    """
+    try:
+        # If no criteria specified, use reasonable defaults
+        if min_durability is None and max_durability is None and min_valuation is None and max_valuation is None:
+            min_durability = 60
+            min_valuation = 60
+        
         stocks = quality_service.filter_by_durability_valuation(
             min_durability=min_durability,
-            min_valuation=min_valuation
+            max_durability=max_durability,
+            min_valuation=min_valuation,
+            max_valuation=max_valuation
         )
+        
+        # Build tier description
+        criteria_parts = []
+        if min_durability is not None:
+            criteria_parts.append(f"Durability>={min_durability}")
+        if max_durability is not None:
+            criteria_parts.append(f"Durability<={max_durability}")
+        if min_valuation is not None:
+            criteria_parts.append(f"Valuation>={min_valuation}")
+        if max_valuation is not None:
+            criteria_parts.append(f"Valuation<={max_valuation}")
+        
+        tier_desc = "Durability & Valuation" + (f" ({', '.join(criteria_parts)})" if criteria_parts else " (Any)")
         
         return QualityStocksResponse(
             count=len(stocks),
-            tier=f"High Durability & Valuation (Durability>={min_durability}, Valuation>={min_valuation})",
+            tier=tier_desc,
             stocks=[_stock_to_response(stock) for stock in stocks]
         )
     except Exception as e:
