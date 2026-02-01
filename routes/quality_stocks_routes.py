@@ -491,7 +491,9 @@ async def search_stocks(
         for stock in quality_service.stocks:
             if (query_lower in stock.stock_name.lower() or 
                 query_lower in stock.nse_code.lower()):
-                stock.quality_score = quality_service.calculate_quality_score(stock)
+                # Calculate all assessments, quality score, and determine tier
+                # determine_quality_tier will call calculate_all_assessments internally
+                stock.quality_tier = quality_service.determine_quality_tier(stock)
                 matching_stocks.append(_stock_to_response(stock))
         
         return matching_stocks[:limit]

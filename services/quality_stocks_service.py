@@ -635,6 +635,79 @@ class QualityStocksService:
         
         return round(normalized_score, 2)
     
+    def calculate_all_assessments(self, stock: QualityStock):
+        """
+        Calculate all assessment fields for a stock.
+        This must be called before determine_quality_tier().
+        """
+        stock.consecutive_positive_quarters = self._count_consecutive_positive_quarters(stock)
+        stock.profit_growth_consistency = self._assess_profit_growth_consistency(stock)
+        stock.margin_stability = self._assess_margin_stability(stock)
+        stock.promoter_trend = self._assess_promoter_trend(stock)
+        stock.cash_flow_quality = self._assess_cash_flow_quality(stock)
+        stock.roe_trend = self._assess_roe_trend(stock)
+        stock.roce_consistency = self._assess_roce_consistency(stock)
+    
+    def determine_quality_tier(self, stock: QualityStock) -> str:
+        """
+        Determine the quality tier for a stock based on its metrics.
+        This is used for search results and individual stock lookups.
+        
+        Returns:
+            str: Quality tier ("Great", "Aggressive", "Good", or "")
+        """
+        # Calculate all assessments first (needed for tier determination)
+        self.calculate_all_assessments(stock)
+        
+        # Calculate quality score if not already calculated
+        if stock.quality_score == 0.0:
+            stock.quality_score = self.calculate_quality_score(stock)
+        
+        # Check Great quality criteria
+        if (stock.roe > 12 and
+            stock.roce > 15 and
+            stock.debt_to_equity < 1.0 and
+            stock.interest_coverage > 3 and
+            stock.current_ratio > 1.2 and
+            stock.eps_ttm_growth > 0 and
+            stock.eps_ttm_growth > 10 and
+            stock.consecutive_positive_quarters >= 1 and
+            stock.profit_growth_consistency in ["Consistent", "Very Consistent", "Moderate"] and
+            stock.margin_stability in ["Stable", "Expanding", "Moderately Stable"] and
+            stock.quality_score >= 70 and
+            stock.cash_flow_quality != "Negative" and
+            stock.promoter_pledge_percentage < 30 and
+            (stock.altman_zscore is None or stock.altman_zscore > 1.8)):
+            return "Great"
+        
+        # Check Aggressive quality criteria
+        if (stock.roe > 10 and
+            stock.roce > 12 and
+            stock.debt_to_equity < 1.5 and
+            stock.interest_coverage > 2 and
+            stock.eps_ttm_growth > 15 and
+            stock.quality_score >= 60 and
+            stock.profit_growth_consistency != "Inconsistent" and
+            stock.margin_stability != "Volatile" and
+            stock.cash_flow_quality != "Negative" and
+            stock.promoter_pledge_percentage < 40 and
+            (stock.altman_zscore is None or stock.altman_zscore > 1.5)):
+            return "Aggressive"
+        
+        # Check Good quality criteria
+        if (stock.roe > 8 and
+            stock.roce > 10 and
+            stock.debt_to_equity < 2.0 and
+            stock.interest_coverage > 1.5 and
+            55 <= stock.quality_score < 70 and
+            stock.profit_growth_consistency != "Inconsistent" and
+            stock.margin_stability != "Volatile" and
+            (stock.eps_ttm_growth > -5 or stock.net_profit_3y_growth > 5)):
+            return "Good"
+        
+        # Default: no tier assigned
+        return ""
+    
     def filter_great_quality_stocks(self) -> List[QualityStock]:
         """Filter stocks meeting great quality criteria - no limits, only quality stocks"""
         if not self.stocks:
@@ -914,6 +987,7 @@ class QualityStocksService:
         for stock in self.stocks:
             if stock.nse_code.upper() == nse_code.upper():
                 stock.quality_score = self.calculate_quality_score(stock)
+                stock.quality_tier = self.determine_quality_tier(stock)
                 return stock
         return None
     
