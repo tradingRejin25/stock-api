@@ -150,29 +150,22 @@ class QualityStock:
 class QualityStocksService:
     """Service to analyze and filter quality stocks from CSV data"""
     
-    def __init__(self, csv_path: str = None):
-        if csv_path is None:
-            # Try multiple possible paths
-            possible_paths = [
-                # Path relative to service file
-                os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'filtered_stocks.csv'),
-                # Absolute path (Windows)
-                r'c:\Work\Trading\stock_api_service\data\filtered_stocks.csv',
-                # Alternative relative path
-                os.path.join('data', 'filtered_stocks.csv'),
-            ]
-            
-            csv_path = None
-            for path in possible_paths:
-                if os.path.exists(path):
-                    csv_path = path
-                    break
-            
-            if csv_path is None:
-                # Use the first path as default (will show error if file not found)
-                csv_path = possible_paths[0]
+    def __init__(self, csv_path: str = None, data_folder: str = None):
+        """
+        Initialize the service
         
-        self.csv_path = csv_path
+        Args:
+            csv_path: Optional single CSV file path (deprecated, use data_folder instead)
+            data_folder: Optional path to data folder. If not provided, looks for data folder relative to project root
+        """
+        # Find data folder
+        if data_folder is None:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            data_folder = os.path.join(project_root, 'data')
+        
+        self.data_folder = data_folder
+        self.csv_path = csv_path  # Keep for backward compatibility
         self.stocks: List[QualityStock] = []
     
     def _safe_float(self, value: Any, default: float = 0.0) -> float:
@@ -193,26 +186,69 @@ class QualityStocksService:
         except (ValueError, TypeError):
             return default
     
-    def load_stocks(self) -> List[QualityStock]:
-        """Load and parse stocks from CSV file"""
-        stocks = []
+    def _find_csv_files(self) -> List[str]:
+        """Find all CSV files matching the pattern trendlyne-filtered (N).csv"""
+        csv_files = []
         
-        try:
-            with open(self.csv_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                
-                for row in reader:
-                    try:
-                        # Pre-process durability and valuation scores
-                        durability_score_raw = row.get('Durability Score', '')
-                        durability_score_val = str(durability_score_raw).strip() if durability_score_raw else ''
-                        durability_score = self._safe_int(durability_score_val) if durability_score_val and durability_score_val not in ['', '-', 'N/A', 'NA', '0'] else None
-                        
-                        valuation_score_raw = row.get('Valuation Score', '')
-                        valuation_score_val = str(valuation_score_raw).strip() if valuation_score_raw else ''
-                        valuation_score = self._safe_int(valuation_score_val) if valuation_score_val and valuation_score_val not in ['', '-', 'N/A', 'NA', '0'] else None
-                        
-                        stock = QualityStock(
+        if not os.path.exists(self.data_folder):
+            return csv_files
+        
+        import re
+        pattern = re.compile(r'trendlyne-filtered\s*\((\d+)\)\.csv', re.IGNORECASE)
+        
+        for filename in os.listdir(self.data_folder):
+            if pattern.match(filename):
+                csv_files.append(os.path.join(self.data_folder, filename))
+        
+        # Sort by file number
+        def extract_number(file_path: str) -> int:
+            match = pattern.match(os.path.basename(file_path))
+            return int(match.group(1)) if match else 0
+        
+        csv_files.sort(key=extract_number)
+        return csv_files
+    
+    def load_stocks(self) -> List[QualityStock]:
+        """Load and parse stocks from all CSV files matching trendlyne-filtered pattern"""
+        stocks = []
+        stocks_by_key = {}  # Use ISIN or NSE code as key to avoid duplicates
+        
+        # Find all CSV files
+        csv_files = self._find_csv_files()
+        
+        if not csv_files:
+            # Fallback to single file if specified
+            if self.csv_path and os.path.exists(self.csv_path):
+                csv_files = [self.csv_path]
+            else:
+                print(f"CSV files not found in: {self.data_folder}")
+                return stocks
+        
+        print(f"Found {len(csv_files)} CSV files to load")
+        
+        # Load from all CSV files
+        for csv_file in csv_files:
+            try:
+                with open(csv_file, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    
+                    for row in reader:
+                        try:
+                            # Get durability and valuation scores - simple direct access
+                            # Check exact field names first, then try variations
+                            durability_score_raw = row.get('Durability Score') or row.get('Durability') or row.get('DurabilityScore')
+                            if durability_score_raw is not None and str(durability_score_raw).strip() not in ['', '-', 'N/A', 'NA', 'None']:
+                                durability_score = self._safe_int(durability_score_raw)
+                            else:
+                                durability_score = None
+                            
+                            valuation_score_raw = row.get('Valuation Score') or row.get('Valuation') or row.get('ValuationScore')
+                            if valuation_score_raw is not None and str(valuation_score_raw).strip() not in ['', '-', 'N/A', 'NA', 'None']:
+                                valuation_score = self._safe_int(valuation_score_raw)
+                            else:
+                                valuation_score = None
+                            
+                            stock = QualityStock(
                             stock_name=row.get('Stock', '').strip(),
                             nse_code=row.get('NSE Code', '').strip(),
                             isin=row.get('ISIN', '').strip(),
@@ -336,34 +372,48 @@ class QualityStocksService:
                             industry_net_profit_growth_ann_yoy=self._safe_float(row.get('Industry Net Profit Growth Ann  YoY %', 0)) if row.get('Industry Net Profit Growth Ann  YoY %') else None,
                             price_to_book_adjusted=self._safe_float(row.get('PBV Adjusted', 0)) if row.get('PBV Adjusted') else None,
                             fc_est_1q_forward_ebit_qtr=self._safe_float(row.get('FC Est  1Q forward EBIT Qtr', 0)) if row.get('FC Est  1Q forward EBIT Qtr') else None,
-                        )
-                        
-                        # Calculate additional insights
-                        stock.cash_flow_quality = self._assess_cash_flow_quality(stock)
-                        stock.roe_trend = self._assess_roe_trend(stock)
-                        stock.roce_consistency = self._assess_roce_consistency(stock)
-                        
-                        # Calculate insights after creating stock
-                        stock.consecutive_positive_quarters = self._count_consecutive_positive_quarters(stock)
-                        stock.profit_growth_consistency = self._assess_profit_growth_consistency(stock)
-                        stock.margin_stability = self._assess_margin_stability(stock)
-                        stock.promoter_trend = self._assess_promoter_trend(stock)
-                        
-                        if stock.nse_code:  # Only add stocks with NSE code
-                            stocks.append(stock)
-                    except Exception as e:
-                        print(f"Error parsing row: {e}")
-                        continue
-            
-            self.stocks = stocks
-            return stocks
+                            )
+                            
+                            # Calculate additional insights
+                            stock.cash_flow_quality = self._assess_cash_flow_quality(stock)
+                            stock.roe_trend = self._assess_roe_trend(stock)
+                            stock.roce_consistency = self._assess_roce_consistency(stock)
+                            
+                            # Calculate insights after creating stock
+                            stock.consecutive_positive_quarters = self._count_consecutive_positive_quarters(stock)
+                            stock.profit_growth_consistency = self._assess_profit_growth_consistency(stock)
+                            stock.margin_stability = self._assess_margin_stability(stock)
+                            stock.promoter_trend = self._assess_promoter_trend(stock)
+                            
+                            # Use ISIN or NSE code as unique key
+                            stock_key = stock.isin if stock.isin else stock.nse_code
+                            
+                            if stock_key:
+                                # If stock already exists, keep the one with more complete data
+                                if stock_key in stocks_by_key:
+                                    existing = stocks_by_key[stock_key]
+                                    # Prefer stock with both durability and valuation scores
+                                    if (stock.durability_score is not None and stock.valuation_score is not None and
+                                        (existing.durability_score is None or existing.valuation_score is None)):
+                                        stocks_by_key[stock_key] = stock
+                                else:
+                                    stocks_by_key[stock_key] = stock
+                        except Exception as e:
+                            print(f"Error parsing row in {os.path.basename(csv_file)}: {e}")
+                            continue
+                            
+            except FileNotFoundError:
+                print(f"CSV file not found: {csv_file}")
+            except Exception as e:
+                print(f"Error loading CSV file {os.path.basename(csv_file)}: {e}")
+                continue
         
-        except FileNotFoundError:
-            print(f"CSV file not found at: {self.csv_path}")
-            return []
-        except Exception as e:
-            print(f"Error loading stocks: {e}")
-            return []
+        # Convert dict values to list
+        stocks = list(stocks_by_key.values())
+        print(f"Loaded {len(stocks)} unique stocks from {len(csv_files)} CSV files")
+        
+        self.stocks = stocks
+        return stocks
     
     def calculate_quality_score(self, stock: QualityStock) -> float:
         """
@@ -961,7 +1011,19 @@ class QualityStocksService:
         
         # Filter based on durability and valuation scores
         filtered_stocks = []
+        stocks_with_both = 0
+        stocks_with_durability = 0
+        stocks_with_valuation = 0
+        
         for stock in self.stocks:
+            # Debug: Count stocks with scores
+            if stock.durability_score is not None:
+                stocks_with_durability += 1
+            if stock.valuation_score is not None:
+                stocks_with_valuation += 1
+            if stock.durability_score is not None and stock.valuation_score is not None:
+                stocks_with_both += 1
+            
             # Check durability score criteria
             durability_ok = True
             if stock.durability_score is None:
@@ -986,6 +1048,16 @@ class QualityStocksService:
             if durability_ok and valuation_ok:
                 stock.quality_tier = "High Durability & Valuation"
                 filtered_stocks.append(stock)
+        
+        # Debug output
+        print(f"Filtering Debug:")
+        print(f"   Total stocks: {len(self.stocks)}")
+        print(f"   Stocks with durability_score: {stocks_with_durability}")
+        print(f"   Stocks with valuation_score: {stocks_with_valuation}")
+        print(f"   Stocks with both scores: {stocks_with_both}")
+        print(f"   Filtered stocks: {len(filtered_stocks)}")
+        if filtered_stocks:
+            print(f"   Sample filtered stock: {filtered_stocks[0].stock_name} (D:{filtered_stocks[0].durability_score}, V:{filtered_stocks[0].valuation_score})")
         
         # Sort by combined durability + valuation score (descending)
         filtered_stocks.sort(

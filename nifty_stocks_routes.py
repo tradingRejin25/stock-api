@@ -73,11 +73,11 @@ async def get_nifty_stocks(
         print(traceback.format_exc())
         
         # Provide more helpful error message
-        if "Firebase" in error_message or "Firestore" in error_message:
+        if "CSV" in error_message or "file" in error_message.lower():
             raise HTTPException(
                 status_code=503,
-                detail=f"Nifty stocks service unavailable: Firebase Firestore is not configured. "
-                       f"Please configure Firebase credentials or ensure CSV file is available. Error: {error_message}"
+                detail=f"Nifty stocks service unavailable: CSV file is not available. "
+                       f"Please ensure CSV file is available. Error: {error_message}"
             )
         elif "CSV" in error_message or "not found" in error_message.lower():
             raise HTTPException(
@@ -112,11 +112,11 @@ async def get_stock_by_nse_code_path(nse_code: str):
         print(traceback.format_exc())
         
         # Provide more helpful error message
-        if "Firebase" in error_message or "Firestore" in error_message:
+        if "CSV" in error_message or "file" in error_message.lower():
             raise HTTPException(
                 status_code=503,
-                detail=f"Nifty stocks service unavailable: Firebase Firestore is not configured. "
-                       f"Please configure Firebase credentials or ensure CSV file is available. Error: {error_message}"
+                detail=f"Nifty stocks service unavailable: CSV file is not available. "
+                       f"Please ensure CSV file is available. Error: {error_message}"
             )
         elif "CSV" in error_message or "not found" in error_message.lower():
             raise HTTPException(

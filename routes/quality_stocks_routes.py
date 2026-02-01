@@ -398,6 +398,58 @@ async def get_durability_valuation_stats():
         raise HTTPException(status_code=500, detail=f"Error fetching score statistics: {str(e)}")
 
 
+@router.get("/durability-valuation/best", response_model=QualityStocksResponse)
+async def get_best_durability_valuation_stocks():
+    """
+    Get stocks with BEST durability and valuation scores.
+    
+    Uses high quality thresholds:
+    - Durability >= 70 (above average, good durability)
+    - Valuation >= 50 (above average, good valuation)
+    
+    These represent stocks with good durability and valuation scores.
+    """
+    try:
+        stocks = quality_service.filter_by_durability_valuation(
+            min_durability=70,  # Good durability (above average of 60.3)
+            min_valuation=50    # Good valuation (above average of 38.2)
+        )
+        
+        return QualityStocksResponse(
+            count=len(stocks),
+            tier="Best Durability & Valuation (Durability>=70, Valuation>=50)",
+            stocks=[_stock_to_response(stock) for stock in stocks]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching best durability-valuation stocks: {str(e)}")
+
+
+@router.get("/durability-valuation/excellent", response_model=QualityStocksResponse)
+async def get_excellent_durability_valuation_stocks():
+    """
+    Get stocks with EXCELLENT durability and valuation scores (top 10%).
+    
+    Uses top 10% thresholds based on actual score distribution:
+    - Durability >= 80 (top 10% threshold)
+    - Valuation >= 53 (top 10% threshold)
+    
+    These represent the cream of the crop - stocks with exceptional durability and valuation.
+    """
+    try:
+        stocks = quality_service.filter_by_durability_valuation(
+            min_durability=80,  # Top 10% threshold
+            min_valuation=53    # Top 10% threshold
+        )
+        
+        return QualityStocksResponse(
+            count=len(stocks),
+            tier="Excellent Durability & Valuation (Durability>=80, Valuation>=53)",
+            stocks=[_stock_to_response(stock) for stock in stocks]
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching excellent durability-valuation stocks: {str(e)}")
+
+
 @router.get("/durability-valuation", response_model=QualityStocksResponse)
 async def get_durability_valuation_stocks(
     min_durability: Optional[int] = Query(None, ge=0, le=100, description="Minimum durability score (0-100)"),
@@ -413,14 +465,14 @@ async def get_durability_valuation_stocks(
     No other criteria are applied - only Trendlyne Durability and Valuation scores.
     
     Examples:
-    - Get stocks with durability >= 60 and valuation >= 60:
+    - Get best stocks (top 20%): /api/quality-stocks/durability-valuation/best
+    - Get excellent stocks (top 10%): /api/quality-stocks/durability-valuation/excellent
+    - Get stocks with durability >= 70 and valuation >= 50 (default):
+      /api/quality-stocks/durability-valuation
+    - Get stocks with custom thresholds:
       /api/quality-stocks/durability-valuation?min_durability=60&min_valuation=60
-    
     - Get stocks with durability between 50-80:
       /api/quality-stocks/durability-valuation?min_durability=50&max_durability=80
-    
-    - Get all stocks with any durability and valuation scores:
-      /api/quality-stocks/durability-valuation
     
     Args:
         min_durability: Minimum durability score (None = no minimum)
@@ -432,10 +484,10 @@ async def get_durability_valuation_stocks(
         List of stocks meeting the criteria, sorted by combined score
     """
     try:
-        # If no criteria specified, use reasonable defaults
+        # If no criteria specified, use good quality defaults (above average)
         if min_durability is None and max_durability is None and min_valuation is None and max_valuation is None:
-            min_durability = 60
-            min_valuation = 60
+            min_durability = 70  # Above average (avg is 60.3)
+            min_valuation = 50   # Above average (avg is 38.2)
         
         stocks = quality_service.filter_by_durability_valuation(
             min_durability=min_durability,
