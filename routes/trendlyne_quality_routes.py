@@ -123,9 +123,18 @@ class QualityFilteredStockResponse(BaseModel):
     fcEst1QFwdCashEpsQtr: Optional[float]
     fcEst1QFwdInterestExpenseQtr: Optional[float]
     
-    # Quality Metrics (from QualityFilteredStock)
+    # Calculated/Computed Fields (NOT from CSV - these are OK)
     qualityScore: float
     qualityTier: str
+    consecutivePositiveQuarters: int
+    profitGrowthConsistency: str
+    marginStability: str
+    promoterTrend: str
+    cashFlowQuality: str
+    roeTrend: str
+    roceConsistency: str
+    
+    # Quality Metrics (from QualityFilteredStock - specific to trendlyne quality)
     qualityNotes: List[str]
     passedCriteria: Dict[str, bool]
     
@@ -217,7 +226,16 @@ def _quality_stock_to_response(stock: QualityFilteredStock) -> QualityFilteredSt
         fcEst1QFwdCashEpsQtr=_safe_float(_get_value_from_data(data, 'FC Est  1Q fwd Cash EPS Qtr'), None),
         fcEst1QFwdInterestExpenseQtr=_safe_float(_get_value_from_data(data, 'FC Est  1Q fwd Interest Expense Qtr'), None),
         
-        # Quality Metrics
+        # Calculated/Computed Fields (set defaults since QualityFilteredStock doesn't calculate these)
+        consecutivePositiveQuarters=0,  # Not calculated for QualityFilteredStock
+        profitGrowthConsistency="",  # Not calculated for QualityFilteredStock
+        marginStability="",  # Not calculated for QualityFilteredStock
+        promoterTrend="",  # Not calculated for QualityFilteredStock
+        cashFlowQuality="",  # Not calculated for QualityFilteredStock
+        roeTrend="",  # Not calculated for QualityFilteredStock
+        roceConsistency="",  # Not calculated for QualityFilteredStock
+        
+        # Quality Metrics (from QualityFilteredStock - specific to trendlyne quality)
         qualityScore=stock.quality_score,
         qualityTier=stock.quality_tier.value,
         qualityNotes=stock.quality_notes,

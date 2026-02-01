@@ -567,9 +567,8 @@ class QualityStocksService:
             score += 2
         elif stock.ebitda_ann_margin > 10:
             score += 1
-        # Bonus for EBITDA growth
-        if stock.ebitda_qtr_yoy_growth > 15:
-            score += 1
+        # Bonus for EBITDA growth - removed (ebitda_qtr_yoy_growth not in CSV)
+        # Using ebitda_ann_margin above instead
         max_score += 5
         
         # 30. Price to Sales (0-3 points) - Revenue valuation
@@ -587,14 +586,7 @@ class QualityStocksService:
                 score += 2
         max_score += 3
         
-        # 31. Price to Cashflow (0-3 points) - Cash valuation
-        if stock.price_to_cashflow:
-            if stock.price_to_cashflow < 10:
-                score += 3
-            elif stock.price_to_cashflow < 15:
-                score += 2
-            elif stock.price_to_cashflow < 20:
-                score += 1
+        # 31. Price to Cashflow (0-3 points) - REMOVED (price_to_cashflow not in CSV)
         max_score += 3
         
         # 32. ROCE Consistency (0-3 points) - Long-term consistency
@@ -664,15 +656,12 @@ class QualityStocksService:
                 stock.interest_coverage > 3 and
                 stock.current_ratio > 1.2 and
                 stock.eps_ttm_growth > 0 and
-                stock.operating_rev_growth_ttm > 10 and
+                stock.eps_ttm_growth > 10 and  # Using EPS growth instead of revenue growth
                 stock.consecutive_positive_quarters >= 1 and  # At least 1 positive quarter
                 stock.profit_growth_consistency in ["Consistent", "Very Consistent", "Moderate"] and
                 stock.margin_stability in ["Stable", "Expanding", "Moderately Stable"] and
                 stock.quality_score >= 70 and
-                stock.market_cap > 0 and  # Ensure valid market cap
-                # Additional quality checks using new metrics
-                stock.roa_ann > 5 and  # Good asset efficiency
-                stock.cash_flow_return_on_assets > 0 and  # Positive cash flow
+                # Additional quality checks using available metrics only
                 stock.cash_flow_quality != "Negative" and  # Good cash flow quality
                 stock.promoter_pledge_percentage < 30 and  # Low promoter pledge (risk)
                 (stock.altman_zscore is None or stock.altman_zscore > 1.8)  # Not in distress zone
@@ -703,14 +692,12 @@ class QualityStocksService:
                 stock.roce > 12 and
                 stock.debt_to_equity < 1.5 and
                 stock.interest_coverage > 2 and
-                (stock.eps_ttm_growth > 15 or stock.operating_rev_growth_ttm > 20) and
+                stock.eps_ttm_growth > 15 and
                 stock.quality_score >= 60 and
-                stock.market_cap > 0 and
                 # Exclude stocks with negative or inconsistent growth
                 stock.profit_growth_consistency != "Inconsistent" and
                 stock.margin_stability != "Volatile" and
                 # Additional quality checks
-                stock.roa_ann > 3 and  # Minimum asset efficiency
                 stock.cash_flow_quality != "Negative" and  # Positive cash flow
                 stock.promoter_pledge_percentage < 40 and  # Reasonable pledge level
                 (stock.altman_zscore is None or stock.altman_zscore > 1.5)):  # Not in severe distress
@@ -719,7 +706,7 @@ class QualityStocksService:
         
         # Sort by growth potential (EPS growth + Revenue growth)
         aggressive_stocks.sort(
-            key=lambda x: (x.eps_ttm_growth + x.operating_rev_growth_ttm) / 2,
+            key=lambda x: x.eps_ttm_growth,  # Using EPS growth only
             reverse=True
         )
         return aggressive_stocks
@@ -902,14 +889,14 @@ class QualityStocksService:
                 stock.interest_coverage > 1.5 and
                 stock.quality_score >= 55 and  # Raised minimum to 55 (was 50)
                 stock.quality_score < 70 and  # Not great quality
-                stock.market_cap > 0 and
+                # market_cap not in CSV, skipping check
                 # Exclude poor quality indicators
                 stock.profit_growth_consistency != "Inconsistent" and
                 stock.margin_stability != "Volatile" and
                 # Exclude poor cash flow quality
                 stock.cash_flow_quality != "Negative" and
                 # At least some positive growth
-                (stock.eps_ttm_growth > -5 or stock.operating_rev_growth_ttm > 5) and
+                stock.eps_ttm_growth > -5 and  # Using EPS growth only
                 # Exclude high promoter pledge (risk indicator)
                 stock.promoter_pledge_percentage < 50):
                 stock.quality_tier = "Good"
@@ -931,124 +918,84 @@ class QualityStocksService:
         return None
     
     def _count_consecutive_positive_quarters(self, stock: QualityStock) -> int:
-        """Count consecutive quarters with positive EPS growth"""
-        count = 0
-        quarters = [
-            (stock.basic_eps_qtr, stock.basic_eps_1q_ago),
-            (stock.basic_eps_1q_ago, stock.basic_eps_2q_ago),
-        ]
-        
-        for current, previous in quarters:
-            if current > 0 and previous > 0 and current > previous:
-                count += 1
-            elif current > 0 and previous <= 0:
-                count += 1
-            else:
-                break
-        
-        return count
+        """Count consecutive positive quarterly EPS growth - using available metrics only"""
+        # Since quarterly data is not in CSV, use QoQ growth as proxy
+        if stock.basic_eps_qoq_growth > 0:
+            return 1  # At least one positive quarter
+        return 0
     
     def _assess_profit_growth_consistency(self, stock: QualityStock) -> str:
-        """Assess if profit growth is consistent (not one-time)"""
-        if stock.net_profit_ann <= 0 or stock.net_profit_ann_1y_ago <= 0:
-            return "Negative"
-        
-        # Check YoY growth
-        profit_growth_yoy = ((stock.net_profit_ann - stock.net_profit_ann_1y_ago) / 
-                           abs(stock.net_profit_ann_1y_ago)) * 100
-        
-        # Check quarterly consistency
-        quarters_positive = 0
-        if stock.net_profit_qtr > 0:
-            quarters_positive += 1
-        if stock.net_profit_1q_ago > 0:
-            quarters_positive += 1
-        if stock.net_profit_2q_ago > 0:
-            quarters_positive += 1
-        
-        if profit_growth_yoy > 15 and quarters_positive >= 2:
+        """Assess profit growth consistency - using available metrics only"""
+        # Use 3Y and 5Y growth as proxy for consistency
+        if stock.net_profit_3y_growth > 15 and stock.net_profit_5y_growth > 10:
             return "Very Consistent"
-        elif profit_growth_yoy > 10 and quarters_positive >= 2:
+        elif stock.net_profit_3y_growth > 10 and stock.net_profit_5y_growth > 5:
             return "Consistent"
-        elif profit_growth_yoy > 0:
+        elif stock.net_profit_3y_growth > 0:
             return "Moderate"
         else:
             return "Inconsistent"
     
     def _assess_margin_stability(self, stock: QualityStock) -> str:
-        """Assess operating margin stability/trend"""
+        """Assess operating margin stability/trend - using available metrics only"""
         if stock.opm_ann <= 0:
             return "Negative"
         
-        # Check if expanding
-        if stock.opm_ann > stock.opm_ann_1y_ago:
-            if stock.opm_qtr > stock.opm_1q_ago:
+        # Compare OPM Ann with OPM TTM as proxy for stability
+        if stock.opm_ttm > 0:
+            margin_diff = abs(stock.opm_ann - stock.opm_ttm) / max(stock.opm_ann, 1)
+            if margin_diff < 0.05:  # Less than 5% change
+                return "Stable"
+            elif margin_diff < 0.15:
+                return "Moderately Stable"
+            elif stock.opm_ttm > stock.opm_ann:
                 return "Expanding"
             else:
-                return "Expanding (Volatile)"
+                return "Volatile"
         
-        # Check stability
-        margin_change = abs(stock.opm_ann - stock.opm_ann_1y_ago) / max(stock.opm_ann_1y_ago, 1)
-        if margin_change < 0.05:  # Less than 5% change
-            return "Stable"
-        elif margin_change < 0.15:
-            return "Moderately Stable"
-        else:
-            return "Volatile"
+        return "Stable" if stock.opm_ann > 10 else "Moderate"
     
     def _assess_promoter_trend(self, stock: QualityStock) -> str:
-        """Assess promoter holding trend"""
-        if stock.promoter_holding_change_1y > 1:
-            if stock.promoter_holding_change_qoq > 0:
-                return "Rising (Strong)"
-            else:
-                return "Rising"
-        elif stock.promoter_holding_change_1y > 0:
-            return "Rising (Moderate)"
-        elif abs(stock.promoter_holding_change_1y) < 1:
+        """Assess promoter holding trend - using available metrics only"""
+        # Use QoQ change as proxy since 1Y change is not in CSV
+        if stock.promoter_holding_change_qoq > 1:
+            return "Rising (Strong)"
+        elif stock.promoter_holding_change_qoq > 0:
+            return "Rising"
+        elif abs(stock.promoter_holding_change_qoq) < 1:
             return "Stable"
         else:
             return "Declining"
     
     def _assess_cash_flow_quality(self, stock: QualityStock) -> str:
-        """Assess cash flow quality"""
-        if stock.cash_flow_return_on_assets > 0 and stock.cash_flow_return_on_assets_1y_ago > 0:
-            if stock.cash_flow_return_on_assets > stock.cash_flow_return_on_assets_1y_ago:
-                return "Improving"
-            elif abs(stock.cash_flow_return_on_assets - stock.cash_flow_return_on_assets_1y_ago) < 2:
-                return "Stable"
-            else:
-                return "Declining"
-        elif stock.cash_flow_return_on_assets > 0:
+        """Assess cash flow quality - using available metrics only"""
+        # Since cash_flow_return_on_assets is not in CSV, use EBITDA and profit metrics
+        if stock.ebitda_ann > 0 and stock.net_profit_3y_growth > 0:
             return "Positive"
+        elif stock.ebitda_ann > 0:
+            return "Stable"
         else:
             return "Negative"
     
     def _assess_roe_trend(self, stock: QualityStock) -> str:
-        """Assess ROE trend over multiple years"""
-        if stock.roe > stock.roe_1y_ago > stock.roe_2y_ago and stock.roe_2y_ago > stock.roe_3y_ago:
-            return "Consistently Rising"
-        elif stock.roe > stock.roe_1y_ago:
+        """Assess ROE trend - using available metrics only"""
+        # Since historical ROE data is not in CSV, use growth metrics as proxy
+        if stock.eps_ttm_growth > 15 and stock.net_profit_3y_growth > 10:
             return "Rising"
-        elif abs(stock.roe - stock.roe_1y_ago) < 2:
+        elif stock.eps_ttm_growth > 0:
             return "Stable"
         else:
             return "Declining"
     
     def _assess_roce_consistency(self, stock: QualityStock) -> str:
-        """Assess ROCE consistency using 3Y and 5Y averages"""
-        if stock.roce_3y_avg > 0 and stock.roce_5y_avg > 0:
-            # Check if current ROCE is close to averages (consistent)
-            diff_3y = abs(stock.roce - stock.roce_3y_avg)
-            diff_5y = abs(stock.roce - stock.roce_5y_avg)
-            
-            if diff_3y < 3 and diff_5y < 5:
-                return "Very Consistent"
-            elif diff_3y < 5:
-                return "Consistent"
-            elif stock.roce > stock.roce_3y_avg:
-                return "Improving"
-            else:
-                return "Volatile"
-        return "Insufficient Data"
+        """Assess ROCE consistency - using available metrics only"""
+        # Since 3Y/5Y averages are not in CSV, use current ROCE and growth metrics
+        if stock.roce > 15:
+            return "Very Consistent"
+        elif stock.roce > 10:
+            return "Consistent"
+        elif stock.roce > 5:
+            return "Moderate"
+        else:
+            return "Insufficient Data"
 
