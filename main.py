@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from nifty_stocks_routes import router as nifty_stocks_router
 from routes.trendlyne_stocks_routes import router as trendlyne_stocks_router
 from routes.trendlyne_quality_routes import router as trendlyne_quality_router
+from routes.quality_stocks_routes import router as quality_stocks_router
 
 app = FastAPI(
     title="Stock API Service",
@@ -32,6 +33,9 @@ app.include_router(trendlyne_stocks_router)
 # Include Trendlyne quality stocks routes
 app.include_router(trendlyne_quality_router)
 
+# Include Quality stocks routes (new API with SWOT and sector/industry metrics)
+app.include_router(quality_stocks_router)
+
 @app.get("/")
 async def root():
     """Root endpoint with API information"""
@@ -54,6 +58,12 @@ async def root():
             "trendlyne_quality_medium": "/api/trendlyne-quality/medium",
             "trendlyne_quality_good": "/api/trendlyne-quality/good",
             "trendlyne_quality_statistics": "/api/trendlyne-quality/statistics",
+            "quality_stocks_great": "/api/quality-stocks/great",
+            "quality_stocks_aggressive": "/api/quality-stocks/aggressive",
+            "quality_stocks_good": "/api/quality-stocks/good",
+            "quality_stocks_all": "/api/quality-stocks/all",
+            "quality_stocks_search": "/api/quality-stocks/search?query=RELIANCE",
+            "quality_stocks_by_nse": "/api/quality-stocks/stock/{nse_code}",
             "docs": "/docs",
             "redoc": "/redoc"
         }
@@ -70,6 +80,7 @@ if __name__ == "__main__":
     print("📋 Nifty Stocks API available at: http://localhost:8000/api/nifty-stocks")
     print("📊 Trendlyne Stocks API available at: http://localhost:8000/api/trendlyne-stocks")
     print("⭐ Trendlyne Quality Stocks API available at: http://localhost:8000/api/trendlyne-quality")
+    print("🎯 Quality Stocks API (with SWOT) available at: http://localhost:8000/api/quality-stocks")
     print("📚 API Documentation at: http://localhost:8000/docs")
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
