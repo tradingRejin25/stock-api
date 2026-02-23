@@ -1,0 +1,12 @@
+# Simplified requirements with versions that have pre-built wheels for Python 3.14
+# Use this if the main requirements.txt fails
+
+fastapi
+uvicorn[standard]
+pydantic
+pandas
+openpyxl
+numpy
+
+
+

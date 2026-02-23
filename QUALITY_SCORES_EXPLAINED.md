@@ -94,3 +94,5 @@ Together, they offer a comprehensive view of a company's quality beyond just fin
 
 **Reason**: Fundamental quality scores are more reliable for long-term investment decisions as they focus on business fundamentals rather than short-term price movements.
 
+
+

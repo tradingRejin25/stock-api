@@ -15,20 +15,20 @@ def test_service():
     print("=" * 50)
     
     # Initialize service
-    # Try to use the actual CSV path
-    csv_path = r'c:\Work\Trading\stock_api_service\data\filtered_stocks.csv'
-    if not os.path.exists(csv_path):
-        csv_path = None  # Will use default path
+    # Try to use the actual Excel path
+    excel_path = r'c:\Work\Trading\stock_ai\stock_api_service\data\trendlyne_data.xlsx'
+    if not os.path.exists(excel_path):
+        excel_path = None  # Will use default path
     
-    service = QualityStocksService(csv_path=csv_path)
+    service = QualityStocksService(excel_path=excel_path)
     
     # Load stocks
-    print("\n1. Loading stocks from CSV...")
+    print("\n1. Loading stocks from Excel file...")
     stocks = service.load_stocks()
     print(f"   Loaded {len(stocks)} stocks")
     
     if len(stocks) == 0:
-        print("   ERROR: No stocks loaded. Check CSV path.")
+        print("   ERROR: No stocks loaded. Check Excel file path.")
         return
     
     # Test great quality stocks
